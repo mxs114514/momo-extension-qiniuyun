@@ -17,6 +17,7 @@ blob-report/
 .nyc_output/
 
 # Tool caches
+.worktrees/
 .cache/
 .eslintcache
 .stylelintcache
