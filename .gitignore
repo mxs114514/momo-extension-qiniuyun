@@ -18,6 +18,7 @@ blob-report/
 
 # Tool caches
 .worktrees/
+.pnpm-store/
 .cache/
 .eslintcache
 .stylelintcache

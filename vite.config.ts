@@ -28,6 +28,11 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     clearMocks: true,
     restoreMocks: true,
-    exclude: ['tests/e2e/**', 'node_modules/**'],
+    exclude: [
+      'tests/e2e/**',
+      'node_modules/**',
+      '.worktrees/**',
+      '.pnpm-store/**',
+    ],
   },
 })
