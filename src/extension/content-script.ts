@@ -1,4 +1,9 @@
-﻿type CaptionMessage =
+﻿/**
+ * 注入到目标网页的内容脚本 (Content Script)。
+ * 负责在目标网页中渲染“悬浮翻译气泡”和“底部实时字幕面板”，
+ * 并监听来自 background script 的状态更新，以保持网页字幕与后台音频翻译状态同步。
+ */
+type CaptionMessage =
   | {
       type: 'speech/snapshot'
       snapshot?: {
@@ -170,8 +175,8 @@ function renderPanel(): void {
     left: '50%',
     bottom: '8%',
     zIndex: '2147483647',
-    width: '720px',
-    height: '220px',
+    width: '1620px',
+    height: '200px',
     maxWidth: 'calc(100vw - 32px)',
     boxSizing: 'border-box',
     transform: 'translateX(-50%)',
@@ -186,6 +191,8 @@ function renderPanel(): void {
     whiteSpace: 'pre-wrap',
     overflow: 'hidden',
     boxShadow: '0 8px 24px rgba(15, 23, 42, 0.22)',
+    display: 'flex',
+    flexDirection: 'column',
   })
 
   const header = document.createElement('div')
@@ -197,7 +204,7 @@ function renderPanel(): void {
     marginBottom: '8px',
     paddingRight: '24px',
     color: '#cbd5e1',
-    fontSize: '13px',
+    fontSize: '16px',
     lineHeight: '1.4',
   })
 
@@ -205,7 +212,7 @@ function renderPanel(): void {
   title.textContent = '莫莫实时字幕'
   Object.assign(title.style, {
     color: '#fff',
-    fontSize: '14px',
+    fontSize: '18px',
   })
 
   const statusNode = document.createElement('span')
@@ -239,7 +246,8 @@ function renderPanel(): void {
     justifyContent: 'center',
     flexWrap: 'wrap',
     gap: '8px',
-    marginTop: '12px',
+    marginTop: 'auto',
+    marginBottom: '8px',
   })
   controls.append(...createControlButtons())
 

@@ -1,3 +1,6 @@
+/**
+ * 浏览器扩展侧边栏 (Side Panel) 的独立入口页面程序。
+ */
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import '../index.css'

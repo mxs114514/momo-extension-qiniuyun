@@ -1,3 +1,7 @@
+/**
+ * 供扩展的 React UI（例如侧边栏 Side Panel）使用的自定义 Hook。
+ * 封装了从 React 层面向 background 发送翻译控制指令的逻辑，同时收集并同步最新的转译数据。
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { SpeechTranslationSnapshot } from '../features/speech-translation/types'
 import { isExtensionEvent } from './messaging'

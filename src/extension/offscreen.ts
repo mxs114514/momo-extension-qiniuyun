@@ -1,3 +1,8 @@
+/**
+ * 离屏页面 (Offscreen Document) 脚本。
+ * 由于 Chrome 的 Service Worker 无法直接使用 Web Audio API，
+ * 我们需要在此离屏页面中接收来自后台的信号，以处理标签页音频并在前端环境进行实时翻译。
+ */
 import { createTabSpeechTranslationController } from '../features/speech-translation/create-speech-translation'
 import { logSpeechError } from '../features/speech-translation/debug'
 import type { SpeechTranslationSnapshot } from '../features/speech-translation/types'

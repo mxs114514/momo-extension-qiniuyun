@@ -58,6 +58,10 @@ type ChromeApi = {
   }
 }
 
+/**
+ * 扩展的 Service Worker 后台脚本。
+ * 负责协调侧边栏、内容脚本和离屏页面之间的通信，以及管理标签页音频的捕获权限与生命周期。
+ */
 const chromeApi = (globalThis as typeof globalThis & { chrome?: ChromeApi })
   .chrome
 let lastSnapshot: SpeechTranslationSnapshot | null = null

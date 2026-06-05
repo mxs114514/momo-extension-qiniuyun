@@ -1,5 +1,8 @@
 import type { SpeechTranslationSnapshot } from '../features/speech-translation/types'
 
+/**
+ * 从 UI（如侧边栏、内容脚本）发送给扩展后台的控制指令
+ */
 export type ExtensionCommand =
   | { type: 'speech/start'; tabId?: number }
   | { type: 'speech/pause' }
