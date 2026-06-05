@@ -33,10 +33,10 @@ function controller(status: 'idle' | 'translating' | 'paused' | 'error') {
 }
 
 describe('SpeechTranslationPanel', () => {
-  it('初始状态显示开始翻译和安全警告', () => {
+  it('初始状态显示开始翻译和比赛演示说明', () => {
     render(<SpeechTranslationPanel controller={controller('idle')} />)
     expect(screen.getByRole('button', { name: '开始翻译' })).toBeVisible()
-    expect(screen.getByText(/禁止部署或公开发布/)).toBeVisible()
+    expect(screen.getByText(/个人比赛演示/)).toBeVisible()
   })
 
   it('翻译中只显示中文并提供暂停和停止', () => {

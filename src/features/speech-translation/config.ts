@@ -5,10 +5,6 @@ type Environment = Record<string, string | boolean | undefined>
 export function parseTencentSpeechConfig(
   environment: Environment,
 ): TencentSpeechConfig {
-  if (environment.PROD) {
-    throw new Error('生产环境禁止使用前端长期密钥')
-  }
-
   const appId = String(environment.VITE_TENCENT_APP_ID ?? '').trim()
   const secretId = String(environment.VITE_TENCENT_SECRET_ID ?? '').trim()
   const secretKey = String(environment.VITE_TENCENT_SECRET_KEY ?? '').trim()

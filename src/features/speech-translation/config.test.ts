@@ -13,17 +13,6 @@ describe('parseTencentSpeechConfig', () => {
     ).toThrow('请在 .env.local 中配置腾讯云凭证')
   })
 
-  it('生产环境拒绝使用长期密钥', () => {
-    expect(() =>
-      parseTencentSpeechConfig({
-        VITE_TENCENT_APP_ID: '123',
-        VITE_TENCENT_SECRET_ID: 'id',
-        VITE_TENCENT_SECRET_KEY: 'key',
-        PROD: true,
-      }),
-    ).toThrow('生产环境禁止使用前端长期密钥')
-  })
-
   it('AppID 不是纯数字时返回中文错误', () => {
     expect(() =>
       parseTencentSpeechConfig({
@@ -51,6 +40,22 @@ describe('parseTencentSpeechConfig', () => {
       target: 'zh',
       voiceFormat: 1,
       translationModel: 'hunyuan-translation-lite',
+    })
+  })
+
+  it('个人比赛演示模式下不因生产标记拒绝读取配置', () => {
+    expect(
+      parseTencentSpeechConfig({
+        VITE_TENCENT_APP_ID: '123',
+        VITE_TENCENT_SECRET_ID: 'id',
+        VITE_TENCENT_SECRET_KEY: 'key',
+        PROD: true,
+      }),
+    ).toMatchObject({
+      appId: '123',
+      secretId: 'id',
+      source: 'en',
+      target: 'zh',
     })
   })
 })

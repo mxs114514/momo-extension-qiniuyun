@@ -30,7 +30,7 @@ export function SpeechTranslationPanel({ controller }: Props) {
             Tencent Cloud Speech
           </p>
           <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-5xl">
-            实时英译中
+            莫莫实时字幕
           </h1>
         </div>
         <div
@@ -42,8 +42,8 @@ export function SpeechTranslationPanel({ controller }: Props) {
         </div>
       </header>
 
-      <p className="mt-5 border-l-2 border-amber-400 pl-4 text-sm leading-6 text-amber-100">
-        当前方案使用前端长期密钥，仅限本地开发演示，禁止部署或公开发布。
+      <p className="mt-5 border-l-2 border-sky-400 pl-4 text-sm leading-6 text-sky-100">
+        个人比赛演示项目，使用本地配置完成麦克风实时英译中流程。
       </p>
 
       <section className="flex min-h-[46svh] flex-1 flex-col justify-center py-10">
