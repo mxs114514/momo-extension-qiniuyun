@@ -5,6 +5,7 @@ $requiredFiles = @(
   'dist/popup.html',
   'dist/side-panel.html',
   'dist/offscreen.html',
+  'dist/speech-pcm-worklet.js',
   'dist/assets/background.js',
   'dist/icons/icon-16.png',
   'dist/icons/icon-32.png',

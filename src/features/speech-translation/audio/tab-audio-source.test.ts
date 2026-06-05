@@ -22,18 +22,23 @@ function setup(streamId = 'tab-stream-id') {
     close: vi.fn().mockResolvedValue(undefined),
   }
   const getUserMedia = vi.fn().mockResolvedValue(stream)
+  const createObjectURL = vi.fn(() => 'blob:worklet')
+  const getWorkletModuleUrl = vi.fn<() => string | null>(() => null)
   const revokeObjectURL = vi.fn()
   const audioSource = new TabAudioSource(streamId, {
     getUserMedia,
     createAudioContext: () => context as unknown as AudioContext,
     createWorkletNode: () => workletNode as unknown as AudioWorkletNode,
-    createObjectURL: () => 'blob:worklet',
+    createObjectURL,
+    getWorkletModuleUrl,
     revokeObjectURL,
   })
   return {
     audioSource,
     context,
+    createObjectURL,
     getUserMedia,
+    getWorkletModuleUrl,
     revokeObjectURL,
     sourceNode,
     track,
@@ -93,6 +98,20 @@ describe('TabAudioSource', () => {
     expect(fixture.revokeObjectURL).toHaveBeenCalledWith('blob:worklet')
   })
 
+  it('插件环境使用静态 AudioWorklet 文件，避免 CSP 阻止 blob 脚本', async () => {
+    const fixture = setup()
+    fixture.getWorkletModuleUrl.mockReturnValueOnce(
+      'chrome-extension://extension-id/speech-pcm-worklet.js',
+    )
+
+    await fixture.audioSource.start(vi.fn())
+
+    expect(fixture.context.audioWorklet.addModule).toHaveBeenCalledWith(
+      'chrome-extension://extension-id/speech-pcm-worklet.js',
+    )
+    expect(fixture.createObjectURL).not.toHaveBeenCalled()
+  })
+
   it('将标签页音频权限拒绝转换为中文错误', async () => {
     const fixture = setup()
     fixture.getUserMedia.mockRejectedValueOnce(
@@ -111,6 +130,18 @@ describe('TabAudioSource', () => {
     delete context.audioWorklet
     await expect(fixture.audioSource.start(vi.fn())).rejects.toThrow(
       '当前浏览器不支持 AudioWorklet',
+    )
+    expect(fixture.track.stop).toHaveBeenCalledOnce()
+  })
+
+  it('将 AudioWorklet 加载失败转换为中文错误', async () => {
+    const fixture = setup()
+    fixture.context.audioWorklet.addModule.mockRejectedValueOnce(
+      new DOMException("Unable to load a worklet's module.", 'AbortError'),
+    )
+
+    await expect(fixture.audioSource.start(vi.fn())).rejects.toThrow(
+      '无法加载标签页音频处理模块，请刷新插件后重试',
     )
     expect(fixture.track.stop).toHaveBeenCalledOnce()
   })

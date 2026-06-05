@@ -7,6 +7,7 @@ interface TabAudioDependencies {
   getUserMedia: typeof navigator.mediaDevices.getUserMedia
   createAudioContext: () => AudioContext
   createWorkletNode: (context: AudioContext) => AudioWorkletNode
+  getWorkletModuleUrl: () => string | null
   createObjectURL: typeof URL.createObjectURL
   revokeObjectURL: typeof URL.revokeObjectURL
 }
@@ -18,6 +19,14 @@ function defaultDependencies(): TabAudioDependencies {
     createAudioContext: () => new AudioContext(),
     createWorkletNode: (context) =>
       new AudioWorkletNode(context, 'speech-pcm-processor'),
+    getWorkletModuleUrl: () => {
+      const chromeRuntime = (
+        globalThis as typeof globalThis & {
+          chrome?: { runtime?: { getURL?: (path: string) => string } }
+        }
+      ).chrome?.runtime
+      return chromeRuntime?.getURL?.('speech-pcm-worklet.js') ?? null
+    },
     createObjectURL: (blob) => URL.createObjectURL(blob),
     revokeObjectURL: (url) => URL.revokeObjectURL(url),
   }
@@ -32,6 +41,7 @@ export class TabAudioSource implements AudioSource {
   private sourceNode: MediaStreamAudioSourceNode | null = null
   private workletNode: AudioWorkletNode | null = null
   private workletUrl: string | null = null
+  private shouldRevokeWorkletUrl = false
   private onChunk: ((chunk: Int8Array) => void) | null = null
   private paused = false
   private started = false
@@ -62,9 +72,14 @@ export class TabAudioSource implements AudioSource {
         throw new Error('当前浏览器不支持 AudioWorklet')
       }
 
-      this.workletUrl = this.dependencies.createObjectURL(
-        new Blob([audioWorkletCode], { type: 'text/javascript' }),
-      )
+      this.workletUrl = this.dependencies.getWorkletModuleUrl()
+      this.shouldRevokeWorkletUrl = false
+      if (!this.workletUrl) {
+        this.workletUrl = this.dependencies.createObjectURL(
+          new Blob([audioWorkletCode], { type: 'text/javascript' }),
+        )
+        this.shouldRevokeWorkletUrl = true
+      }
       await this.context.audioWorklet.addModule(this.workletUrl)
       logSpeechDebug('标签页音频：AudioWorklet 已加载', {
         sampleRate: this.context.sampleRate,
@@ -89,6 +104,15 @@ export class TabAudioSource implements AudioSource {
       await this.cleanup()
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
         throw new Error('标签页音频权限被拒绝，请重新授权标签页音频捕获', {
+          cause: error,
+        })
+      }
+      if (
+        error instanceof DOMException &&
+        error.name === 'AbortError' &&
+        error.message.includes("Unable to load a worklet's module")
+      ) {
+        throw new Error('无法加载标签页音频处理模块，请刷新插件后重试', {
           cause: error,
         })
       }
@@ -128,7 +152,7 @@ export class TabAudioSource implements AudioSource {
     if (this.context && this.context.state !== 'closed') {
       await this.context.close()
     }
-    if (this.workletUrl) {
+    if (this.workletUrl && this.shouldRevokeWorkletUrl) {
       this.dependencies.revokeObjectURL(this.workletUrl)
     }
 
@@ -138,6 +162,7 @@ export class TabAudioSource implements AudioSource {
     this.sourceNode = null
     this.workletNode = null
     this.workletUrl = null
+    this.shouldRevokeWorkletUrl = false
     this.onChunk = null
     this.paused = false
     this.started = false
