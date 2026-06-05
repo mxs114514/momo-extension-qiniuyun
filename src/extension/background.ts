@@ -16,6 +16,11 @@ type ChromeRuntimeSender = {
 type SendResponse = (response: { ok: boolean; error?: string }) => void
 
 type ChromeApi = {
+  action?: {
+    onClicked: {
+      addListener: (listener: () => void) => void
+    }
+  }
   runtime: {
     onMessage: {
       addListener: (
@@ -37,7 +42,7 @@ type ChromeApi = {
     }) => Promise<Array<{ id?: number }>>
     sendMessage: (
       tabId: number,
-      message: ExtensionEvent,
+      message: ExtensionEvent | { type: 'ui/open-panel' },
     ) => Promise<unknown> | void
   }
   tabCapture: {
@@ -56,6 +61,10 @@ type ChromeApi = {
 const chromeApi = (globalThis as typeof globalThis & { chrome?: ChromeApi })
   .chrome
 let lastSnapshot: SpeechTranslationSnapshot | null = null
+
+chromeApi?.action?.onClicked.addListener(() => {
+  void openPanelOnActiveTab()
+})
 
 chromeApi?.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void handleRuntimeMessage(message, sender)
@@ -131,6 +140,20 @@ async function broadcastToContentScripts(event: ExtensionEvent): Promise<void> {
   )
 }
 
+async function openPanelOnActiveTab(): Promise<void> {
+  const [activeTab] = await getChrome().tabs.query({
+    active: true,
+    currentWindow: true,
+  })
+  if (!activeTab?.id) return
+
+  try {
+    await getChrome().tabs.sendMessage(activeTab.id, { type: 'ui/open-panel' })
+  } catch {
+    // 受保护页面或尚未注入内容脚本时无法打开页面面板。
+  }
+}
+
 async function startTabAudio(
   command: Extract<ExtensionCommand, { type: 'speech/start' }>,
   sender: ChromeRuntimeSender,
@@ -147,7 +170,7 @@ async function startTabAudio(
 }
 
 async function getTargetTabId(
-  commandTabId: number,
+  commandTabId: number | undefined,
   sender: ChromeRuntimeSender,
 ): Promise<number> {
   const [activeTab] = await getChrome().tabs.query({

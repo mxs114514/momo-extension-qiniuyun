@@ -58,9 +58,9 @@ pnpm build:extension
 测试插件：
 
 1. 打开一个正在播放英文音频或视频的标签页。
-2. 点击浏览器右上角“莫莫实时字幕”插件图标。
-3. 点击“开始翻译”。
-4. 字幕会显示在插件 Popup / Side Panel 中，并在页面底部显示字幕覆盖层。
+2. 点击浏览器工具栏里的“莫莫实时字幕”图标，激活当前页面并打开字幕控制面板。
+3. 点击“开始翻译”。字幕会显示在页面字幕面板中，也可以继续使用 Side Panel 查看。
+4. 后续可以用页面右下角“译”悬浮球展开或收起字幕控制面板。
 
 修改插件代码后，需要重新构建并刷新插件：
 
@@ -80,8 +80,7 @@ pnpm test:e2e:extension
 ## 插件控制台查看
 
 - Background Service Worker：在 `chrome://extensions` 找到插件，进入“详细信息”，点击 Service worker 的“检查视图”。
-- Popup：点击插件图标打开 Popup 后，在 Popup 上右键选择“检查”。
-- 页面字幕覆盖层：在被翻译的网页中按 `F12`，查看页面 DevTools。
+- 页面悬浮字幕面板：在被翻译的网页中按 `F12`，查看页面 DevTools。
 - Offscreen Document：如果扩展详情页出现 offscreen 相关检查入口，可从那里打开；否则优先查看 Service Worker 和页面控制台。
 
 代码完成后先自动修复和格式化：

@@ -42,12 +42,6 @@ test('浏览器插件构建产物可以加载主要页面和内容脚本', async
     }
     const extensionId = new URL(serviceWorker.url()).host
 
-    const popup = await context.newPage()
-    await popup.goto(`chrome-extension://${extensionId}/popup.html`)
-    await expect(
-      popup.getByRole('heading', { name: '莫莫实时字幕' }),
-    ).toBeVisible()
-
     const sidePanel = await context.newPage()
     await sidePanel.goto(`chrome-extension://${extensionId}/side-panel.html`)
     await expect(
@@ -57,6 +51,7 @@ test('浏览器插件构建产物可以加载主要页面和内容脚本', async
     const page = await context.newPage()
     await page.goto(fixture.url)
     await page.waitForLoadState('networkidle')
+    await expect(page.locator('[data-momo-caption-bubble]')).toBeVisible()
     await serviceWorker.evaluate(async () => {
       const tabs = await chrome.tabs.query({})
       const targetTab = tabs.find((tab) => tab.url?.startsWith('http://'))
@@ -80,6 +75,7 @@ test('浏览器插件构建产物可以加载主要页面和内容脚本', async
         },
       })
     })
+    await page.locator('[data-momo-caption-bubble]').click()
     await expect(page.locator('[data-momo-caption-overlay]')).toHaveText('你好')
   } finally {
     await Promise.all(context.pages().map((page) => page.close()))

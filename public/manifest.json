@@ -4,7 +4,6 @@
   "description": "个人比赛演示用实时英译中浏览器插件。",
   "version": "0.1.0",
   "action": {
-    "default_popup": "popup.html",
     "default_title": "莫莫实时字幕"
   },
   "side_panel": {

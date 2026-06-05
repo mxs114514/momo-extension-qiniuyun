@@ -14,9 +14,11 @@ const sendTabMessage = vi.fn()
 const getMediaStreamId = vi.fn()
 const createDocument = vi.fn()
 const hasDocument = vi.fn()
+let actionClickListener: (() => void) | null = null
 
 beforeEach(() => {
   listener = null
+  actionClickListener = null
   sendMessage.mockReset()
   sendResponse.mockReset()
   query.mockReset()
@@ -32,6 +34,13 @@ beforeEach(() => {
         },
       },
       sendMessage,
+    },
+    action: {
+      onClicked: {
+        addListener: (nextListener: () => void) => {
+          actionClickListener = nextListener
+        },
+      },
     },
     tabs: {
       query,
@@ -83,6 +92,36 @@ describe('background service worker', () => {
         streamId: 'stream-id',
       })
       expect(sendResponse).toHaveBeenCalledWith({ ok: true })
+    })
+  })
+
+  it('uses the sender tab when starting from a content script panel', async () => {
+    hasDocument.mockResolvedValue(true)
+    query.mockResolvedValue([])
+    getMediaStreamId.mockResolvedValue('stream-id')
+    await import('./background')
+
+    listener?.({ type: 'speech/start' }, { tab: { id: 18 } }, sendResponse)
+
+    await vi.waitFor(() => {
+      expect(getMediaStreamId).toHaveBeenCalledWith({ targetTabId: 18 })
+      expect(sendMessage).toHaveBeenCalledWith({
+        type: 'offscreen/start-tab-audio',
+        streamId: 'stream-id',
+      })
+    })
+  })
+
+  it('opens the page panel when the extension action is clicked', async () => {
+    query.mockResolvedValue([{ id: 31 }])
+    await import('./background')
+
+    actionClickListener?.()
+
+    await vi.waitFor(() => {
+      expect(sendTabMessage).toHaveBeenCalledWith(31, {
+        type: 'ui/open-panel',
+      })
     })
   })
 

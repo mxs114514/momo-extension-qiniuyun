@@ -2,7 +2,6 @@ $ErrorActionPreference = 'Stop'
 
 $requiredFiles = @(
   'dist/manifest.json',
-  'dist/popup.html',
   'dist/side-panel.html',
   'dist/offscreen.html',
   'dist/speech-pcm-worklet.js',

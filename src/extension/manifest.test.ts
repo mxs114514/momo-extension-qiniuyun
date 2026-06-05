@@ -4,7 +4,9 @@ import manifest from '../../public/manifest.json'
 describe('extension manifest', () => {
   it('uses Manifest V3 and declares required extension surfaces', () => {
     expect(manifest.manifest_version).toBe(3)
-    expect(manifest.action.default_popup).toBe('popup.html')
+    expect(manifest.action).toEqual({
+      default_title: '莫莫实时字幕',
+    })
     expect(manifest.side_panel.default_path).toBe('side-panel.html')
     expect(manifest.background.service_worker).toBe('assets/background.js')
   })

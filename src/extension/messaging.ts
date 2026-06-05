@@ -1,7 +1,7 @@
 import type { SpeechTranslationSnapshot } from '../features/speech-translation/types'
 
 export type ExtensionCommand =
-  | { type: 'speech/start'; tabId: number }
+  | { type: 'speech/start'; tabId?: number }
   | { type: 'speech/pause' }
   | { type: 'speech/resume' }
   | { type: 'speech/stop' }
@@ -30,9 +30,10 @@ export function isExtensionCommand(
   switch (message.type) {
     case 'speech/start':
       return (
-        typeof message.tabId === 'number' &&
-        Number.isInteger(message.tabId) &&
-        message.tabId > 0
+        message.tabId === undefined ||
+        (typeof message.tabId === 'number' &&
+          Number.isInteger(message.tabId) &&
+          message.tabId > 0)
       )
     case 'speech/pause':
     case 'speech/resume':
