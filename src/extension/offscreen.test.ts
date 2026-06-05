@@ -118,4 +118,24 @@ describe('offscreen runtime', () => {
       expect(error).toHaveBeenCalledWith('[实时翻译]', '不支持的离屏消息')
     })
   })
+
+  it('ignores extension UI messages that are also delivered to offscreen', async () => {
+    initializeOffscreenRuntime({
+      createControllerFromStreamId: () => createController(),
+    })
+
+    listeners[0]?.({ type: 'speech/get-snapshot' })
+    listeners[0]?.({
+      type: 'speech/snapshot',
+      snapshot: {
+        status: 'idle',
+        error: null,
+        sentences: [],
+      },
+    })
+
+    await Promise.resolve()
+
+    expect(sendMessage).not.toHaveBeenCalled()
+  })
 })

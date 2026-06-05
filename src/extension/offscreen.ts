@@ -1,7 +1,11 @@
 import { createTabSpeechTranslationController } from '../features/speech-translation/create-speech-translation'
 import { logSpeechError } from '../features/speech-translation/debug'
 import type { SpeechTranslationSnapshot } from '../features/speech-translation/types'
-import { isOffscreenCommand } from './messaging'
+import {
+  isExtensionCommand,
+  isExtensionEvent,
+  isOffscreenCommand,
+} from './messaging'
 
 interface OffscreenController {
   start: () => Promise<void>
@@ -52,6 +56,10 @@ export function initializeOffscreenRuntime(
 
   getChrome().runtime.onMessage.addListener((message) => {
     void (async () => {
+      if (isExtensionCommand(message) || isExtensionEvent(message)) {
+        return
+      }
+
       if (!isOffscreenCommand(message)) {
         throw new Error('不支持的离屏消息')
       }
