@@ -2,9 +2,6 @@
 node_modules/
 tencentcloud-speech-sdk-js/
 
-# Local documentation
-doc/
-
 # Build outputs
 dist/
 dist-ssr/
