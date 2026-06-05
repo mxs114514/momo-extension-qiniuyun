@@ -7,3 +7,4 @@ AGENTS.md
 CLAUDE.md
 cz-git.config.cjs
 doc
+.env.example

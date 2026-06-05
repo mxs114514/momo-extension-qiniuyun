@@ -1,6 +1,11 @@
 module.exports = {
   extends: ['stylelint-config-standard'],
-  ignoreFiles: ['dist/**', 'playwright-report/**', 'test-results/**'],
+  ignoreFiles: [
+    'dist/**',
+    'playwright-report/**',
+    'test-results/**',
+    'tencentcloud-speech-sdk-js/**',
+  ],
   rules: {
     'alpha-value-notation': null,
     'at-rule-empty-line-before': null,

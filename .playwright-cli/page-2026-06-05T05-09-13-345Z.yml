@@ -1,0 +1,9 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - paragraph [ref=e6]: Tencent Cloud Speech
+      - heading "实时英译中" [level=1] [ref=e7]
+    - generic [ref=e8]: 连接腾讯云
+  - paragraph [ref=e10]: 当前方案使用前端长期密钥，仅限本地开发演示，禁止部署或公开发布。
+  - paragraph [ref=e13]: 开始后，中文字幕会显示在这里。
+  - button "请稍候" [disabled] [ref=e16]
