@@ -20,7 +20,7 @@
 
 ## 技术栈和包管理
 
-- 项目技术栈是 react + TypeScript + Tailwind CSS + shadcn/ui。
+- 项目技术栈在`doc\技术实施指南.md`
 - 默认包管理工具是 pnpm。
 
 ## 工作规范
