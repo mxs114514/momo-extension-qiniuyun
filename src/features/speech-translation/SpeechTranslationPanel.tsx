@@ -30,10 +30,10 @@ export function SpeechTranslationPanel({ controller }: Props) {
     <SpeechTranslationPanelView
       model={{
         snapshot,
-        start: controller.start,
-        pause: controller.pause,
-        resume: controller.resume,
-        stop: controller.stop,
+        start: () => controller.start(),
+        pause: () => controller.pause(),
+        resume: () => controller.resume(),
+        stop: () => controller.stop(),
       }}
     />
   )

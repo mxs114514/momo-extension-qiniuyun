@@ -62,6 +62,35 @@ describe('SpeechTranslationPanel', () => {
     expect(translating.stop).toHaveBeenCalled()
   })
 
+  it('调用 controller 方法时保留实例 this', () => {
+    const rawController = {
+      snapshot: {
+        status: 'idle',
+        sentences: [],
+        error: null,
+      },
+      started: false,
+      getSnapshot: () => rawController.snapshot,
+      subscribe() {
+        return () => undefined
+      },
+      start() {
+        this.started = true
+      },
+      pause: vi.fn(),
+      resume: vi.fn(),
+      stop: vi.fn(),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    }
+    const boundController =
+      rawController as unknown as SpeechTranslationController
+
+    render(<SpeechTranslationPanel controller={boundController} />)
+    fireEvent.click(screen.getByRole('button', { name: '开始翻译' }))
+
+    expect(rawController.started).toBe(true)
+  })
+
   it('暂停时允许继续，错误时显示提示并允许重试', () => {
     const paused = controller('paused')
     const { unmount } = render(<SpeechTranslationPanel controller={paused} />)
