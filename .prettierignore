@@ -1,0 +1,9 @@
+dist
+node_modules
+pnpm-lock.yaml
+playwright-report
+test-results
+AGENTS.md
+CLAUDE.md
+cz-git.config.cjs
+doc
