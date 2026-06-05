@@ -33,12 +33,30 @@ type RuntimeMessageApi = {
 const OVERLAY_SELECTOR = '[data-momo-caption-overlay]'
 const BUBBLE_SELECTOR = '[data-momo-caption-bubble]'
 const PANEL_SELECTOR = '[data-momo-caption-panel]'
+const VIEWPORT_MARGIN = 16
+const BUBBLE_EDGE_MARGIN = 24
+const BUBBLE_SIZE = 48
+const PANEL_WIDTH = 1620
+const PANEL_HEIGHT = 200
+const DRAG_CLICK_THRESHOLD = 4
 
 let initialized = false
 let captionText = ''
 let status = 'idle'
 let errorText = ''
 let viewMode: 'bubble' | 'panel' = 'bubble'
+let bubblePosition: BubblePosition | null = null
+let panelPosition: Position | null = null
+
+type Position = {
+  left: number
+  top: number
+}
+
+type BubblePosition = {
+  edge: 'left' | 'right'
+  top: number
+}
 
 const statusLabels: Record<string, string> = {
   idle: '等待开始',
@@ -56,6 +74,7 @@ export function initializeContentScriptOverlay(): void {
   }
 
   initialized = true
+  window.addEventListener('resize', clampStoredPositions)
   renderBubble()
   getChromeRuntime()?.onMessage?.addListener?.(handleMessage)
 }
@@ -141,11 +160,9 @@ function renderBubble(): void {
   bubble.textContent = '译'
   Object.assign(bubble.style, {
     position: 'fixed',
-    right: '24px',
-    bottom: '24px',
     zIndex: '2147483647',
-    width: '48px',
-    height: '48px',
+    width: `${BUBBLE_SIZE}px`,
+    height: `${BUBBLE_SIZE}px`,
     border: '0',
     borderRadius: '999px',
     background: 'rgba(17, 24, 39, 0.92)',
@@ -157,7 +174,47 @@ function renderBubble(): void {
     boxShadow: '0 8px 24px rgba(15, 23, 42, 0.28)',
     cursor: 'pointer',
   })
+
+  applyBubblePosition(bubble)
+  const dragState = makeDraggable(bubble, {
+    getPosition: getCurrentBubbleDragPosition,
+    onMove: (position) => {
+      bubblePosition = {
+        edge:
+          position.left + BUBBLE_SIZE / 2 < window.innerWidth / 2
+            ? 'left'
+            : 'right',
+        top: clamp(position.top, VIEWPORT_MARGIN, getBubbleMaxTop()),
+      }
+      Object.assign(bubble.style, {
+        left: `${position.left}px`,
+        right: '',
+        top: `${bubblePosition.top}px`,
+        bottom: '',
+      })
+    },
+    onEnd: (position) => {
+      const edge =
+        position.left + BUBBLE_SIZE / 2 < window.innerWidth / 2
+          ? 'left'
+          : 'right'
+      bubblePosition = {
+        edge,
+        top: clamp(position.top, VIEWPORT_MARGIN, getBubbleMaxTop()),
+      }
+      applyBubblePosition(bubble)
+    },
+    size: {
+      width: BUBBLE_SIZE,
+      height: BUBBLE_SIZE,
+    },
+  })
+
   bubble.addEventListener('click', () => {
+    if (dragState.wasDragged()) {
+      return
+    }
+
     viewMode = 'panel'
     renderPanel()
   })
@@ -172,14 +229,11 @@ function renderPanel(): void {
   panel.dataset.momoCaptionPanel = 'true'
   Object.assign(panel.style, {
     position: 'fixed',
-    left: '50%',
-    bottom: '8%',
     zIndex: '2147483647',
-    width: '1620px',
-    height: '200px',
+    width: `${PANEL_WIDTH}px`,
+    height: `${PANEL_HEIGHT}px`,
     maxWidth: 'calc(100vw - 32px)',
     boxSizing: 'border-box',
-    transform: 'translateX(-50%)',
     padding: '10px 48px 10px 16px',
     borderRadius: '8px',
     background: 'rgba(0, 0, 0, 0.78)',
@@ -194,8 +248,10 @@ function renderPanel(): void {
     display: 'flex',
     flexDirection: 'column',
   })
+  applyPanelPosition(panel)
 
   const header = document.createElement('div')
+  header.dataset.momoCaptionDragHandle = 'true'
   Object.assign(header.style, {
     display: 'flex',
     alignItems: 'center',
@@ -206,6 +262,8 @@ function renderPanel(): void {
     color: '#cbd5e1',
     fontSize: '16px',
     lineHeight: '1.4',
+    cursor: 'move',
+    userSelect: 'none',
   })
 
   const title = document.createElement('strong')
@@ -277,6 +335,17 @@ function renderPanel(): void {
   })
   panel.append(header, overlay, errorNode, controls, minimizeButton)
   document.body.append(panel)
+  makeDraggable(header, {
+    getPosition: () => getPanelPosition(),
+    onMove: (position) => {
+      panelPosition = clampPanelPosition(position)
+      applyPanelPosition(panel)
+    },
+    size: {
+      width: getPanelRenderedWidth(),
+      height: PANEL_HEIGHT,
+    },
+  })
 }
 
 function createControlButtons(): HTMLButtonElement[] {
@@ -419,6 +488,236 @@ function removeOverlay(): void {
 
 function removeBubble(): void {
   document.querySelector(BUBBLE_SELECTOR)?.remove()
+}
+
+function applyBubblePosition(bubble: HTMLElement): void {
+  const position = getBubblePosition()
+  Object.assign(bubble.style, {
+    left: position.edge === 'left' ? `${BUBBLE_EDGE_MARGIN}px` : '',
+    right: position.edge === 'right' ? `${BUBBLE_EDGE_MARGIN}px` : '',
+    top: `${position.top}px`,
+    bottom: '',
+  })
+}
+
+function getBubblePosition(): BubblePosition {
+  if (!bubblePosition) {
+    bubblePosition = {
+      edge: 'right',
+      top: getBubbleMaxTop() - BUBBLE_EDGE_MARGIN + VIEWPORT_MARGIN,
+    }
+  }
+
+  bubblePosition.top = clamp(
+    bubblePosition.top,
+    VIEWPORT_MARGIN,
+    getBubbleMaxTop(),
+  )
+
+  return bubblePosition
+}
+
+function getCurrentBubbleDragPosition(): Position {
+  const position = getBubblePosition()
+
+  return {
+    left:
+      position.edge === 'left'
+        ? BUBBLE_EDGE_MARGIN
+        : window.innerWidth - BUBBLE_EDGE_MARGIN - BUBBLE_SIZE,
+    top: position.top,
+  }
+}
+
+function getBubbleMaxTop(): number {
+  return Math.max(
+    VIEWPORT_MARGIN,
+    window.innerHeight - BUBBLE_SIZE - VIEWPORT_MARGIN,
+  )
+}
+
+function applyPanelPosition(panel: HTMLElement): void {
+  const position = getPanelPosition()
+  Object.assign(panel.style, {
+    left: `${position.left}px`,
+    top: `${position.top}px`,
+    right: '',
+    bottom: '',
+    transform: '',
+  })
+}
+
+function getPanelPosition(): Position {
+  if (!panelPosition) {
+    panelPosition = {
+      left: Math.round((window.innerWidth - getPanelRenderedWidth()) / 2),
+      top: Math.round(
+        window.innerHeight - PANEL_HEIGHT - window.innerHeight * 0.08,
+      ),
+    }
+  }
+
+  panelPosition = clampPanelPosition(panelPosition)
+
+  return panelPosition
+}
+
+function clampPanelPosition(position: Position): Position {
+  return clampPosition(position, {
+    width: getPanelRenderedWidth(),
+    height: PANEL_HEIGHT,
+  })
+}
+
+function getPanelRenderedWidth(): number {
+  return Math.max(
+    0,
+    Math.min(PANEL_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2),
+  )
+}
+
+function clampStoredPositions(): void {
+  if (bubblePosition) {
+    bubblePosition.top = clamp(
+      bubblePosition.top,
+      VIEWPORT_MARGIN,
+      getBubbleMaxTop(),
+    )
+  }
+
+  if (panelPosition) {
+    panelPosition = clampPanelPosition(panelPosition)
+  }
+}
+
+function makeDraggable(
+  element: HTMLElement,
+  options: {
+    getPosition: () => Position
+    onMove: (position: Position) => void
+    onEnd?: (position: Position) => void
+    size: {
+      width: number
+      height: number
+    }
+  },
+): { wasDragged: () => boolean } {
+  let activePointerId: number | null = null
+  let startPointer: Position | null = null
+  let startPosition: Position | null = null
+  let dragged = false
+  let suppressNextClick = false
+
+  element.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) {
+      return
+    }
+
+    activePointerId = event.pointerId
+    startPointer = {
+      left: event.clientX,
+      top: event.clientY,
+    }
+    startPosition = options.getPosition()
+    dragged = false
+    element.setPointerCapture?.(event.pointerId)
+  })
+
+  element.addEventListener('pointermove', (event) => {
+    if (
+      activePointerId !== event.pointerId ||
+      !startPointer ||
+      !startPosition
+    ) {
+      return
+    }
+
+    const deltaX = event.clientX - startPointer.left
+    const deltaY = event.clientY - startPointer.top
+    dragged = dragged || Math.hypot(deltaX, deltaY) > DRAG_CLICK_THRESHOLD
+
+    if (!dragged) {
+      return
+    }
+
+    event.preventDefault()
+    options.onMove(
+      clampPosition(
+        {
+          left: startPosition.left + deltaX,
+          top: startPosition.top + deltaY,
+        },
+        options.size,
+      ),
+    )
+  })
+
+  element.addEventListener('pointerup', (event) => {
+    if (
+      activePointerId !== event.pointerId ||
+      !startPointer ||
+      !startPosition
+    ) {
+      return
+    }
+
+    const deltaX = event.clientX - startPointer.left
+    const deltaY = event.clientY - startPointer.top
+    const nextPosition = clampPosition(
+      {
+        left: startPosition.left + deltaX,
+        top: startPosition.top + deltaY,
+      },
+      options.size,
+    )
+
+    if (dragged) {
+      event.preventDefault()
+      suppressNextClick = true
+      options.onEnd?.(nextPosition)
+    }
+
+    element.releasePointerCapture?.(event.pointerId)
+    activePointerId = null
+    startPointer = null
+    startPosition = null
+  })
+
+  return {
+    wasDragged: () => {
+      const result = suppressNextClick
+      suppressNextClick = false
+      return result
+    },
+  }
+}
+
+function clampPosition(
+  position: Position,
+  size: { width: number; height: number },
+): Position {
+  return {
+    left: clamp(
+      Math.round(position.left),
+      VIEWPORT_MARGIN,
+      Math.max(
+        VIEWPORT_MARGIN,
+        window.innerWidth - size.width - VIEWPORT_MARGIN,
+      ),
+    ),
+    top: clamp(
+      Math.round(position.top),
+      VIEWPORT_MARGIN,
+      Math.max(
+        VIEWPORT_MARGIN,
+        window.innerHeight - size.height - VIEWPORT_MARGIN,
+      ),
+    ),
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
 }
 
 function isCaptionMessage(message: unknown): message is CaptionMessage {
