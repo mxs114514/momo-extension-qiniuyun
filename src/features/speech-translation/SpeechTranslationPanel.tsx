@@ -1,9 +1,17 @@
 import type { SpeechTranslationController } from './speech-translation-controller'
-import type { TranslationStatus } from './types'
+import type { SpeechTranslationSnapshot, TranslationStatus } from './types'
 import { useSpeechTranslation } from './use-speech-translation'
 
 interface Props {
   controller: SpeechTranslationController
+}
+
+export interface SpeechTranslationPanelModel {
+  snapshot: SpeechTranslationSnapshot
+  start: () => void | Promise<void>
+  pause: () => void | Promise<void>
+  resume: () => void | Promise<void>
+  stop: () => void | Promise<void>
 }
 
 const statusLabels: Record<TranslationStatus, string> = {
@@ -18,6 +26,25 @@ const statusLabels: Record<TranslationStatus, string> = {
 
 export function SpeechTranslationPanel({ controller }: Props) {
   const snapshot = useSpeechTranslation(controller)
+  return (
+    <SpeechTranslationPanelView
+      model={{
+        snapshot,
+        start: controller.start,
+        pause: controller.pause,
+        resume: controller.resume,
+        stop: controller.stop,
+      }}
+    />
+  )
+}
+
+export function SpeechTranslationPanelView({
+  model,
+}: {
+  model: SpeechTranslationPanelModel
+}) {
+  const { snapshot } = model
   const busy = ['requesting-permission', 'connecting', 'stopping'].includes(
     snapshot.status,
   )
@@ -82,7 +109,7 @@ export function SpeechTranslationPanel({ controller }: Props) {
         {['idle', 'error'].includes(snapshot.status) && (
           <button
             type="button"
-            onClick={() => void controller.start()}
+            onClick={() => void model.start()}
             className="min-w-32 rounded-md bg-sky-400 px-5 py-3 font-semibold text-slate-950 transition hover:bg-sky-300"
           >
             {snapshot.status === 'error' ? '重新开始' : '开始翻译'}
@@ -91,7 +118,7 @@ export function SpeechTranslationPanel({ controller }: Props) {
         {snapshot.status === 'translating' && (
           <button
             type="button"
-            onClick={() => void controller.pause()}
+            onClick={() => void model.pause()}
             className="min-w-28 rounded-md border border-slate-600 px-5 py-3 font-semibold text-white transition hover:border-slate-400"
           >
             暂停
@@ -100,7 +127,7 @@ export function SpeechTranslationPanel({ controller }: Props) {
         {snapshot.status === 'paused' && (
           <button
             type="button"
-            onClick={() => void controller.resume()}
+            onClick={() => void model.resume()}
             className="min-w-28 rounded-md bg-sky-400 px-5 py-3 font-semibold text-slate-950 transition hover:bg-sky-300"
           >
             继续
@@ -109,7 +136,7 @@ export function SpeechTranslationPanel({ controller }: Props) {
         {['translating', 'paused'].includes(snapshot.status) && (
           <button
             type="button"
-            onClick={() => void controller.stop()}
+            onClick={() => void model.stop()}
             className="min-w-28 rounded-md border border-slate-700 px-5 py-3 font-semibold text-slate-300 transition hover:border-red-500 hover:text-red-300"
           >
             停止

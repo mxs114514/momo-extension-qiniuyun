@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "莫莫实时字幕",
+  "description": "个人比赛演示用实时英译中浏览器插件。",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "莫莫实时字幕"
+  },
+  "side_panel": {
+    "default_path": "side-panel.html"
+  },
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["assets/contentScript.js"]
+    }
+  ],
+  "permissions": ["activeTab", "tabCapture", "offscreen", "sidePanel", "tabs"],
+  "host_permissions": ["wss://asr.cloud.tencent.com/*", "<all_urls>"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}
