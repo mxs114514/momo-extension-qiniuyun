@@ -34,7 +34,7 @@ export const DEFAULT_CAPTION_SKIN_ID: CaptionSkinId = 'classic-dark'
 export const CAPTION_SKINS: CaptionSkin[] = [
   {
     id: 'classic-dark',
-    label: '默认黑色',
+    label: '黑色',
     bubbleBackground: 'rgba(17, 24, 39, 0.92)',
     bubbleColor: '#fff',
     panelBackground: 'rgba(0, 0, 0, 0.78)',
@@ -134,7 +134,7 @@ export const CAPTION_SKINS: CaptionSkin[] = [
     subtleButtonColor: '#fff',
     backgroundImagePath: 'skins/liuying-joy.webp',
     imageOverlay:
-      'linear-gradient(90deg, rgba(6, 78, 59, 0.1), rgba(6, 78, 59, 0.46))',
+      'linear-gradient(90deg, rgba(88, 28, 135, 0.1), rgba(126, 34, 206, 0.42))',
   },
 ]
 

@@ -56,8 +56,8 @@ const PANEL_SELECTOR = '[data-momo-caption-panel]'
 const VIEWPORT_MARGIN = 16
 const BUBBLE_EDGE_MARGIN = 24
 const BUBBLE_SIZE = 48
-const PANEL_WIDTH = 1620
-const PANEL_HEIGHT = 200
+const PANEL_WIDTH = 1086
+const PANEL_HEIGHT = 362
 const DRAG_CLICK_THRESHOLD = 4
 
 let initialized = false

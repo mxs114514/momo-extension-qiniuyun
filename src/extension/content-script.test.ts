@@ -109,8 +109,8 @@ describe('content script overlay', () => {
 
     expect(screenText()).toBe('世界\n再见')
     expect(panelStyle().position).toBe('fixed')
-    expect(panelStyle().width).toBe('1620px')
-    expect(panelStyle().height).toBe('200px')
+    expect(panelStyle().width).toBe('1086px')
+    expect(panelStyle().height).toBe('362px')
   })
 
   it('点击字幕面板右上角减号后收回为悬浮球并保留字幕', async () => {
@@ -165,7 +165,7 @@ describe('content script overlay', () => {
     clickBubble()
     clickButton('皮肤')
 
-    expect(panelText()).toContain('默认黑色')
+    expect(panelText()).toContain('黑色')
     expect(panelText()).toContain('白色')
     expect(panelText()).toContain('流萤-思考')
     expect(panelText()).toContain('流萤-惊喜')
@@ -289,7 +289,7 @@ describe('content script overlay', () => {
     })
 
     expect(panelStyle().left).toBe('16px')
-    expect(panelStyle().top).toBe('316px')
+    expect(panelStyle().top).toBe('154px')
     expect(panelStyle().bottom).toBe('')
     expect(panelStyle().transform).toBe('')
     expect(screenText()).toBe('你好')
