@@ -26,6 +26,7 @@ const sendTabMessage = vi.fn()
 const getMediaStreamId = vi.fn()
 const createDocument = vi.fn()
 const hasDocument = vi.fn()
+const openSidePanel = vi.fn()
 let actionClickListener: (() => void) | null = null
 
 beforeEach(() => {
@@ -38,6 +39,7 @@ beforeEach(() => {
   getMediaStreamId.mockReset()
   createDocument.mockReset()
   hasDocument.mockReset()
+  openSidePanel.mockReset()
   historyStore.saveSession.mockReset()
   historyStore.listSessions.mockReset()
   historyStore.getSession.mockReset()
@@ -70,6 +72,9 @@ beforeEach(() => {
     offscreen: {
       createDocument,
       hasDocument,
+    },
+    sidePanel: {
+      open: openSidePanel,
     },
   })
 })
@@ -140,6 +145,21 @@ describe('background service worker', () => {
       expect(sendTabMessage).toHaveBeenCalledWith(31, {
         type: 'ui/open-panel',
       })
+    })
+  })
+
+  it('opens the browser side panel when requested from the content script', async () => {
+    await import('./background')
+
+    listener?.(
+      { type: 'ui/open-side-panel' },
+      { tab: { id: 42 } },
+      sendResponse,
+    )
+
+    await vi.waitFor(() => {
+      expect(openSidePanel).toHaveBeenCalledWith({ tabId: 42 })
+      expect(sendResponse).toHaveBeenCalledWith({ ok: true })
     })
   })
 

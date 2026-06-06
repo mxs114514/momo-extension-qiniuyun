@@ -60,6 +60,9 @@ type ChromeApi = {
       justification: string
     }) => Promise<void>
   }
+  sidePanel: {
+    open: (options: { tabId: number }) => Promise<void> | void
+  }
 }
 
 /**
@@ -124,6 +127,9 @@ async function handleRuntimeMessage(
           snapshot: lastSnapshot,
         })
       }
+      break
+    case 'ui/open-side-panel':
+      await openSidePanel(sender)
       break
     case 'history/list':
       return sessionHistoryStore.listSessions()
@@ -193,6 +199,13 @@ async function openPanelOnActiveTab(): Promise<void> {
   }
 }
 
+async function openSidePanel(sender: ChromeRuntimeSender): Promise<void> {
+  const tabId = sender.tab?.id ?? (await getActiveTabId())
+  if (!tabId) throw new Error('未找到当前标签页')
+
+  await getChrome().sidePanel.open({ tabId })
+}
+
 async function startTabAudio(
   command: Extract<ExtensionCommand, { type: 'speech/start' }>,
   sender: ChromeRuntimeSender,
@@ -212,13 +225,18 @@ async function getTargetTabId(
   commandTabId: number | undefined,
   sender: ChromeRuntimeSender,
 ): Promise<number> {
+  const activeTabId = await getActiveTabId()
+  const tabId = activeTabId ?? sender.tab?.id ?? commandTabId
+  if (!tabId) throw new Error('未找到当前标签页')
+  return tabId
+}
+
+async function getActiveTabId(): Promise<number | undefined> {
   const [activeTab] = await getChrome().tabs.query({
     active: true,
     currentWindow: true,
   })
-  const tabId = activeTab?.id ?? sender.tab?.id ?? commandTabId
-  if (!tabId) throw new Error('未找到当前标签页')
-  return tabId
+  return activeTab?.id
 }
 
 async function ensureOffscreenDocument(): Promise<void> {

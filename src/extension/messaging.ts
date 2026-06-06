@@ -9,6 +9,7 @@ export type ExtensionCommand =
   | { type: 'speech/resume' }
   | { type: 'speech/stop'; saveHistory?: boolean }
   | { type: 'speech/get-snapshot' }
+  | { type: 'ui/open-side-panel' }
   | { type: 'history/list' }
   | { type: 'history/get'; sessionId: string }
   | { type: 'history/rename'; sessionId: string; title: string }
@@ -50,6 +51,7 @@ export function isExtensionCommand(
     case 'speech/pause':
     case 'speech/resume':
     case 'speech/get-snapshot':
+    case 'ui/open-side-panel':
     case 'history/list':
       return true
     case 'history/get':

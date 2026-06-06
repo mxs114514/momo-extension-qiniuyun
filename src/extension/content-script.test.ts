@@ -123,7 +123,7 @@ describe('content script overlay', () => {
     const title = header.querySelector<HTMLElement>('strong')
     const overlay = getElement('[data-momo-caption-overlay]')
 
-    expect(header.style.paddingRight).toBe('112px')
+    expect(header.style.paddingRight).toBe('190px')
     expect(title?.style.fontSize).toBe('22px')
     expect(overlay.style.display).toBe('flex')
     expect(overlay.style.flex).toBe('1 1 auto')
@@ -183,7 +183,7 @@ describe('content script overlay', () => {
 
     initializeContentScriptOverlay()
     clickBubble()
-    clickButton('皮肤')
+    clickButton('切换主题')
 
     expect(panelText()).toContain('黑色')
     expect(panelText()).toContain('白色')
@@ -192,12 +192,30 @@ describe('content script overlay', () => {
     expect(panelText()).toContain('流萤-喜悦')
   })
 
+  it('在皮肤按钮左侧提供历史记录入口并打开侧边栏', async () => {
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+    clickBubble()
+
+    const historyButton = getButton('历史记录')
+    const skinButton = getButton('切换主题')
+    expect(historyButton.style.right).toBe('114px')
+    expect(historyButton.style.minWidth).toBe('64px')
+    expect(skinButton.style.right).toBe('42px')
+    expect(skinButton.style.minWidth).toBe('64px')
+
+    historyButton.click()
+
+    expect(sendMessage).toHaveBeenCalledWith({ type: 'ui/open-side-panel' })
+  })
+
   it('选择白色皮肤后立即应用浅色面板并持久保存', async () => {
     const { initializeContentScriptOverlay } = await import('./content-script')
 
     initializeContentScriptOverlay()
     clickBubble()
-    clickButton('皮肤')
+    clickButton('切换主题')
     clickButton('白色')
 
     expect(panelStyle().background).toBe('rgba(255, 255, 255, 0.92)')
@@ -212,7 +230,7 @@ describe('content script overlay', () => {
 
     initializeContentScriptOverlay()
     clickBubble()
-    clickButton('皮肤')
+    clickButton('切换主题')
     clickButton('流萤-思考')
 
     expect(getUrl).toHaveBeenCalledWith('skins/liuying-thinking.webp')
@@ -228,7 +246,7 @@ describe('content script overlay', () => {
 
     initializeContentScriptOverlay()
     clickBubble()
-    clickButton('皮肤')
+    clickButton('切换主题')
     clickButton('白色')
     closePanel()
     clickBubble()
@@ -657,6 +675,10 @@ function closePanel(): void {
 }
 
 function clickButton(text: string): void {
+  getButton(text).click()
+}
+
+function getButton(text: string): HTMLButtonElement {
   const button = Array.from(document.querySelectorAll('button')).find(
     (button) => button.textContent === text,
   )
@@ -665,7 +687,7 @@ function clickButton(text: string): void {
     throw new Error(`找不到按钮：${text}`)
   }
 
-  button.click()
+  return button
 }
 
 function panelText(): string {

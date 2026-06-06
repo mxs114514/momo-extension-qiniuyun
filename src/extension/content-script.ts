@@ -312,7 +312,7 @@ function renderPanel(): void {
     justifyContent: 'space-between',
     gap: '16px',
     marginBottom: '8px',
-    paddingRight: '112px',
+    paddingRight: '190px',
     color: skin.headerColor,
     fontSize: '16px',
     lineHeight: '1.4',
@@ -394,7 +394,7 @@ function renderPanel(): void {
     position: 'absolute',
     top: '8px',
     right: '42px',
-    minWidth: '44px',
+    minWidth: '64px',
     height: '24px',
     border: '0',
     borderRadius: '6px',
@@ -409,6 +409,31 @@ function renderPanel(): void {
     event.stopPropagation()
     skinMenuOpen = !skinMenuOpen
     renderPanel()
+  })
+
+  const historyButton = document.createElement('button')
+  historyButton.type = 'button'
+  historyButton.dataset.momoCaptionHistory = 'true'
+  historyButton.setAttribute('aria-label', '打开历史记录')
+  historyButton.textContent = '历史记录'
+  Object.assign(historyButton.style, {
+    position: 'absolute',
+    top: '8px',
+    right: '114px',
+    minWidth: '64px',
+    height: '24px',
+    border: '0',
+    borderRadius: '6px',
+    background: skin.subtleButtonBackground,
+    color: skin.subtleButtonColor,
+    fontSize: '12px',
+    fontWeight: '700',
+    lineHeight: '20px',
+    cursor: 'pointer',
+  })
+  historyButton.addEventListener('click', (event) => {
+    event.stopPropagation()
+    void sendCommand({ type: 'ui/open-side-panel' })
   })
 
   const minimizeButton = document.createElement('button')
@@ -436,7 +461,15 @@ function renderPanel(): void {
     skinMenuOpen = false
     renderBubble()
   })
-  panel.append(header, overlay, errorNode, controls, skinButton, minimizeButton)
+  panel.append(
+    header,
+    overlay,
+    errorNode,
+    controls,
+    historyButton,
+    skinButton,
+    minimizeButton,
+  )
   if (skinMenuOpen) {
     panel.append(createSkinMenu(skin))
   }

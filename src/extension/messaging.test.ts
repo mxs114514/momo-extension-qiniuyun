@@ -5,6 +5,7 @@ describe('extension messaging', () => {
   it('accepts known speech commands and rejects unknown messages', () => {
     expect(isExtensionCommand({ type: 'speech/start', tabId: 1 })).toBe(true)
     expect(isExtensionCommand({ type: 'speech/start' })).toBe(true)
+    expect(isExtensionCommand({ type: 'ui/open-side-panel' })).toBe(true)
     expect(isExtensionCommand({ type: 'speech/stop' })).toBe(true)
     expect(isExtensionCommand({ type: 'speech/stop', saveHistory: true })).toBe(
       true,
