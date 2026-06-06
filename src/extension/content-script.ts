@@ -312,7 +312,7 @@ function renderPanel(): void {
     justifyContent: 'space-between',
     gap: '16px',
     marginBottom: '8px',
-    paddingRight: '24px',
+    paddingRight: '112px',
     color: skin.headerColor,
     fontSize: '16px',
     lineHeight: '1.4',
@@ -324,7 +324,7 @@ function renderPanel(): void {
   title.textContent = '莫莫实时字幕'
   Object.assign(title.style, {
     color: skin.titleColor,
-    fontSize: '18px',
+    fontSize: '22px',
   })
 
   const statusNode = document.createElement('span')
@@ -347,11 +347,18 @@ function renderPanel(): void {
   overlay.setAttribute('role', 'status')
   overlay.textContent = captionText || '等待字幕...'
   Object.assign(overlay.style, {
-    display: 'block',
-    minHeight: '72px',
-    maxHeight: '96px',
+    display: 'flex',
+    flex: '1 1 auto',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    minHeight: '0',
+    maxHeight: 'none',
     overflow: 'hidden',
     color: skin.overlayColor,
+    fontSize: '28px',
+    fontWeight: '700',
+    lineHeight: '1.45',
+    textAlign: 'left',
     textShadow: skin.backgroundImagePath
       ? '0 2px 12px rgba(0, 0, 0, 0.55)'
       : '',
@@ -382,7 +389,7 @@ function renderPanel(): void {
   skinButton.type = 'button'
   skinButton.dataset.momoCaptionSkinToggle = 'true'
   skinButton.setAttribute('aria-label', '切换字幕皮肤')
-  skinButton.textContent = '皮肤'
+  skinButton.textContent = '切换主题'
   Object.assign(skinButton.style, {
     position: 'absolute',
     top: '8px',

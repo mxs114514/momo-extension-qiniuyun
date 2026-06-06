@@ -113,6 +113,26 @@ describe('content script overlay', () => {
     expect(panelStyle().height).toBe('362px')
   })
 
+  it('字幕面板标题、状态和正文使用适合背景皮肤的空间布局', async () => {
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+    clickBubble()
+
+    const header = getElement('[data-momo-caption-drag-handle]')
+    const title = header.querySelector<HTMLElement>('strong')
+    const overlay = getElement('[data-momo-caption-overlay]')
+
+    expect(header.style.paddingRight).toBe('112px')
+    expect(title?.style.fontSize).toBe('22px')
+    expect(overlay.style.display).toBe('flex')
+    expect(overlay.style.flex).toBe('1 1 auto')
+    expect(overlay.style.alignItems).toBe('center')
+    expect(overlay.style.justifyContent).toBe('flex-start')
+    expect(overlay.style.textAlign).toBe('left')
+    expect(overlay.style.fontSize).toBe('28px')
+  })
+
   it('点击字幕面板右上角减号后收回为悬浮球并保留字幕', async () => {
     const { initializeContentScriptOverlay } = await import('./content-script')
 
