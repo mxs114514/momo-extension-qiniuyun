@@ -3,6 +3,15 @@
  * 负责在目标网页中渲染“悬浮翻译气泡”和“底部实时字幕面板”，
  * 并监听来自 background script 的状态更新，以保持网页字幕与后台音频翻译状态同步。
  */
+import {
+  CAPTION_SKIN_STORAGE_KEY,
+  CAPTION_SKINS,
+  DEFAULT_CAPTION_SKIN_ID,
+  getCaptionSkin,
+  type CaptionSkin,
+  type CaptionSkinId,
+} from './caption-skins'
+
 type CaptionMessage =
   | {
       type: 'speech/snapshot'
@@ -23,11 +32,22 @@ type CaptionMessage =
 
 type RuntimeMessageApi = {
   runtime?: {
+    getURL?: (path: string) => string
     sendMessage?: (message: unknown) => Promise<unknown> | void
     onMessage?: {
       addListener?: (listener: (message: unknown) => void) => void
     }
   }
+  storage?: {
+    local?: StorageLocalApi
+  }
+}
+
+type StorageLocalApi = {
+  get?: (
+    key: string,
+  ) => Promise<Record<string, unknown>> | Record<string, unknown>
+  set?: (items: Record<string, unknown>) => Promise<void> | void
 }
 
 const OVERLAY_SELECTOR = '[data-momo-caption-overlay]'
@@ -46,9 +66,11 @@ let status = 'idle'
 let errorText = ''
 let viewMode: 'bubble' | 'panel' = 'bubble'
 let stopConfirming = false
+let skinMenuOpen = false
 let hasSavableCaption = false
 let bubblePosition: BubblePosition | null = null
 let panelPosition: Position | null = null
+let currentSkinId: CaptionSkinId = DEFAULT_CAPTION_SKIN_ID
 
 type Position = {
   left: number
@@ -78,7 +100,19 @@ export function initializeContentScriptOverlay(): void {
   initialized = true
   window.addEventListener('resize', clampStoredPositions)
   renderBubble()
+  void loadStoredSkin()
   getChromeRuntime()?.onMessage?.addListener?.(handleMessage)
+}
+
+async function loadStoredSkin(): Promise<void> {
+  try {
+    const stored = await getChromeStorage()?.get?.(CAPTION_SKIN_STORAGE_KEY)
+    const nextSkin = getCaptionSkin(stored?.[CAPTION_SKIN_STORAGE_KEY])
+    currentSkinId = nextSkin.id
+    rerenderCurrentView()
+  } catch {
+    currentSkinId = DEFAULT_CAPTION_SKIN_ID
+  }
 }
 
 function handleMessage(message: unknown): void {
@@ -97,6 +131,7 @@ function handleMessage(message: unknown): void {
     errorText = ''
     status = 'idle'
     stopConfirming = false
+    skinMenuOpen = false
     hasSavableCaption = false
     viewMode = 'bubble'
     renderBubble()
@@ -170,6 +205,7 @@ function renderBubble(): void {
   }
 
   const bubble = document.createElement('button')
+  const skin = getCurrentSkin()
   bubble.type = 'button'
   bubble.dataset.momoCaptionBubble = 'true'
   bubble.setAttribute('aria-label', '展开实时字幕')
@@ -181,8 +217,8 @@ function renderBubble(): void {
     height: `${BUBBLE_SIZE}px`,
     border: '0',
     borderRadius: '999px',
-    background: 'rgba(17, 24, 39, 0.92)',
-    color: '#fff',
+    background: skin.bubbleBackground,
+    color: skin.bubbleColor,
     fontSize: '18px',
     fontWeight: '700',
     lineHeight: '48px',
@@ -242,6 +278,7 @@ function renderPanel(): void {
   removeOverlay()
 
   const panel = document.createElement('div')
+  const skin = getCurrentSkin()
   panel.dataset.momoCaptionPanel = 'true'
   Object.assign(panel.style, {
     position: 'fixed',
@@ -252,18 +289,19 @@ function renderPanel(): void {
     boxSizing: 'border-box',
     padding: '10px 48px 10px 16px',
     borderRadius: '8px',
-    background: 'rgba(0, 0, 0, 0.78)',
-    color: '#fff',
+    background: skin.panelBackground,
+    color: skin.panelColor,
     fontSize: '20px',
     lineHeight: '1.5',
     textAlign: 'center',
     pointerEvents: 'auto',
     whiteSpace: 'pre-wrap',
     overflow: 'hidden',
-    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.22)',
+    boxShadow: skin.shadow,
     display: 'flex',
     flexDirection: 'column',
   })
+  applyPanelSkinBackground(panel, skin)
   applyPanelPosition(panel)
 
   const header = document.createElement('div')
@@ -275,7 +313,7 @@ function renderPanel(): void {
     gap: '16px',
     marginBottom: '8px',
     paddingRight: '24px',
-    color: '#cbd5e1',
+    color: skin.headerColor,
     fontSize: '16px',
     lineHeight: '1.4',
     cursor: 'move',
@@ -285,12 +323,23 @@ function renderPanel(): void {
   const title = document.createElement('strong')
   title.textContent = '莫莫实时字幕'
   Object.assign(title.style, {
-    color: '#fff',
+    color: skin.titleColor,
     fontSize: '18px',
   })
 
   const statusNode = document.createElement('span')
   statusNode.textContent = statusLabels[status] ?? status
+  const statusDot = document.createElement('span')
+  Object.assign(statusDot.style, {
+    display: 'inline-block',
+    width: '8px',
+    height: '8px',
+    marginRight: '8px',
+    borderRadius: '999px',
+    background: skin.statusDotColor,
+    verticalAlign: 'middle',
+  })
+  statusNode.prepend(statusDot)
   header.append(title, statusNode)
 
   const overlay = document.createElement('span')
@@ -302,6 +351,10 @@ function renderPanel(): void {
     minHeight: '72px',
     maxHeight: '96px',
     overflow: 'hidden',
+    color: skin.overlayColor,
+    textShadow: skin.backgroundImagePath
+      ? '0 2px 12px rgba(0, 0, 0, 0.55)'
+      : '',
   })
 
   const errorNode = document.createElement('div')
@@ -309,7 +362,7 @@ function renderPanel(): void {
   Object.assign(errorNode.style, {
     display: errorText ? 'block' : 'none',
     marginTop: '8px',
-    color: '#fecaca',
+    color: skin.errorColor,
     fontSize: '13px',
     lineHeight: '1.5',
   })
@@ -323,7 +376,33 @@ function renderPanel(): void {
     marginTop: 'auto',
     marginBottom: '8px',
   })
-  controls.append(...createControlButtons())
+  controls.append(...createControlButtons(skin))
+
+  const skinButton = document.createElement('button')
+  skinButton.type = 'button'
+  skinButton.dataset.momoCaptionSkinToggle = 'true'
+  skinButton.setAttribute('aria-label', '切换字幕皮肤')
+  skinButton.textContent = '皮肤'
+  Object.assign(skinButton.style, {
+    position: 'absolute',
+    top: '8px',
+    right: '42px',
+    minWidth: '44px',
+    height: '24px',
+    border: '0',
+    borderRadius: '6px',
+    background: skin.subtleButtonBackground,
+    color: skin.subtleButtonColor,
+    fontSize: '12px',
+    fontWeight: '700',
+    lineHeight: '20px',
+    cursor: 'pointer',
+  })
+  skinButton.addEventListener('click', (event) => {
+    event.stopPropagation()
+    skinMenuOpen = !skinMenuOpen
+    renderPanel()
+  })
 
   const minimizeButton = document.createElement('button')
   minimizeButton.type = 'button'
@@ -338,8 +417,8 @@ function renderPanel(): void {
     height: '24px',
     border: '0',
     borderRadius: '6px',
-    background: 'rgba(255, 255, 255, 0.14)',
-    color: '#fff',
+    background: skin.subtleButtonBackground,
+    color: skin.subtleButtonColor,
     fontSize: '18px',
     lineHeight: '20px',
     cursor: 'pointer',
@@ -347,9 +426,13 @@ function renderPanel(): void {
   minimizeButton.addEventListener('click', (event) => {
     event.stopPropagation()
     viewMode = 'bubble'
+    skinMenuOpen = false
     renderBubble()
   })
-  panel.append(header, overlay, errorNode, controls, minimizeButton)
+  panel.append(header, overlay, errorNode, controls, skinButton, minimizeButton)
+  if (skinMenuOpen) {
+    panel.append(createSkinMenu(skin))
+  }
   document.body.append(panel)
   makeDraggable(header, {
     getPosition: () => getPanelPosition(),
@@ -364,13 +447,99 @@ function renderPanel(): void {
   })
 }
 
-function createControlButtons(): HTMLButtonElement[] {
+function applyPanelSkinBackground(panel: HTMLElement, skin: CaptionSkin): void {
+  if (!skin.backgroundImagePath) {
+    return
+  }
+
+  const imageUrl =
+    getChromeRuntime()?.getURL?.(skin.backgroundImagePath) ??
+    skin.backgroundImagePath
+  Object.assign(panel.style, {
+    backgroundColor: skin.panelBackground,
+    backgroundImage: `${skin.imageOverlay ?? 'linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55))'}, url("${imageUrl}")`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+  })
+}
+
+function createSkinMenu(skin: CaptionSkin): HTMLElement {
+  const menu = document.createElement('div')
+  menu.dataset.momoCaptionSkinMenu = 'true'
+  Object.assign(menu.style, {
+    position: 'absolute',
+    top: '38px',
+    right: '10px',
+    zIndex: '1',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(86px, 1fr))',
+    gap: '6px',
+    padding: '8px',
+    borderRadius: '8px',
+    background: skin.backgroundImagePath
+      ? 'rgba(15, 23, 42, 0.72)'
+      : skin.subtleButtonBackground,
+    boxShadow: skin.shadow,
+    backdropFilter: 'blur(10px)',
+  })
+
+  for (const option of CAPTION_SKINS) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.textContent = option.label
+    Object.assign(button.style, {
+      border: `1px solid ${
+        option.id === currentSkinId ? skin.actionBorder : 'transparent'
+      }`,
+      borderRadius: '6px',
+      background:
+        option.id === currentSkinId
+          ? skin.actionBackground
+          : skin.subtleButtonBackground,
+      color: skin.subtleButtonColor,
+      padding: '6px 8px',
+      fontSize: '12px',
+      fontWeight: '700',
+      cursor: 'pointer',
+      whiteSpace: 'nowrap',
+    })
+    button.addEventListener('click', (event) => {
+      event.stopPropagation()
+      void selectSkin(option.id)
+    })
+    menu.append(button)
+  }
+
+  return menu
+}
+
+async function selectSkin(skinId: CaptionSkinId): Promise<void> {
+  currentSkinId = skinId
+  skinMenuOpen = false
+  renderPanel()
+
+  try {
+    await getChromeStorage()?.set?.({
+      [CAPTION_SKIN_STORAGE_KEY]: skinId,
+    })
+  } catch {
+    // 皮肤保存失败不影响字幕展示。
+  }
+}
+
+function createControlButtons(skin: CaptionSkin): HTMLButtonElement[] {
   if (stopConfirming) {
     return [
-      createCommandButton('保存并停止', {
-        type: 'speech/stop',
-        saveHistory: true,
-      }),
+      createCommandButton(
+        '保存并停止',
+        {
+          type: 'speech/stop',
+          saveHistory: true,
+        },
+        false,
+        skin,
+      ),
       createCommandButton(
         '不保存',
         {
@@ -378,38 +547,44 @@ function createControlButtons(): HTMLButtonElement[] {
           saveHistory: false,
         },
         true,
+        skin,
       ),
-      createCancelStopButton(),
+      createCancelStopButton(skin),
     ]
   }
 
   if (status === 'idle' || status === 'error') {
     return [
-      createCommandButton(status === 'error' ? '重新开始' : '开始翻译', {
-        type: 'speech/start',
-      }),
+      createCommandButton(
+        status === 'error' ? '重新开始' : '开始翻译',
+        {
+          type: 'speech/start',
+        },
+        false,
+        skin,
+      ),
     ]
   }
 
   if (status === 'translating') {
     return [
-      createCommandButton('暂停', { type: 'speech/pause' }),
-      createStopButton(),
+      createCommandButton('暂停', { type: 'speech/pause' }, false, skin),
+      createStopButton(skin),
     ]
   }
 
   if (status === 'paused') {
     return [
-      createCommandButton('继续', { type: 'speech/resume' }),
-      createStopButton(),
+      createCommandButton('继续', { type: 'speech/resume' }, false, skin),
+      createStopButton(skin),
     ]
   }
 
-  return [createDisabledButton('请稍候')]
+  return [createDisabledButton('请稍候', skin)]
 }
 
-function createStopButton(): HTMLButtonElement {
-  const button = createStyledControlButton('停止', true)
+function createStopButton(skin: CaptionSkin): HTMLButtonElement {
+  const button = createStyledControlButton('停止', true, skin)
   button.addEventListener('click', (event) => {
     event.stopPropagation()
     if (!hasSavableCaption) {
@@ -421,14 +596,15 @@ function createStopButton(): HTMLButtonElement {
     }
 
     stopConfirming = true
+    skinMenuOpen = false
     renderPanel()
   })
 
   return button
 }
 
-function createCancelStopButton(): HTMLButtonElement {
-  const button = createStyledControlButton('取消')
+function createCancelStopButton(skin: CaptionSkin): HTMLButtonElement {
+  const button = createStyledControlButton('取消', false, skin)
   button.addEventListener('click', (event) => {
     event.stopPropagation()
     stopConfirming = false
@@ -442,8 +618,9 @@ function createCommandButton(
   label: string,
   message: unknown,
   danger = false,
+  skin = getCurrentSkin(),
 ): HTMLButtonElement {
-  const button = createStyledControlButton(label, danger)
+  const button = createStyledControlButton(label, danger, skin)
   button.addEventListener('click', (event) => {
     event.stopPropagation()
     void sendCommand(message)
@@ -455,16 +632,17 @@ function createCommandButton(
 function createStyledControlButton(
   label: string,
   danger = false,
+  skin = getCurrentSkin(),
 ): HTMLButtonElement {
   const button = document.createElement('button')
   button.type = 'button'
   button.textContent = label
   Object.assign(button.style, {
     minWidth: '76px',
-    border: `1px solid ${danger ? 'rgba(248, 113, 113, 0.7)' : 'rgba(125, 211, 252, 0.7)'}`,
+    border: `1px solid ${danger ? 'rgba(248, 113, 113, 0.7)' : skin.actionBorder}`,
     borderRadius: '6px',
-    background: danger ? 'rgba(127, 29, 29, 0.34)' : 'rgba(56, 189, 248, 0.18)',
-    color: danger ? '#fecaca' : '#e0f2fe',
+    background: danger ? 'rgba(127, 29, 29, 0.34)' : skin.actionBackground,
+    color: danger ? '#fecaca' : skin.actionColor,
     padding: '6px 12px',
     fontSize: '13px',
     fontWeight: '700',
@@ -516,6 +694,7 @@ function applyOptimisticStatus(message: unknown): void {
     case 'speech/start':
       status = 'connecting'
       errorText = ''
+      skinMenuOpen = false
       break
     case 'speech/pause':
       status = 'paused'
@@ -543,8 +722,11 @@ function isErrorResponse(
   )
 }
 
-function createDisabledButton(label: string): HTMLButtonElement {
-  const button = createCommandButton(label, { type: 'noop' })
+function createDisabledButton(
+  label: string,
+  skin: CaptionSkin,
+): HTMLButtonElement {
+  const button = createCommandButton(label, { type: 'noop' }, false, skin)
   button.disabled = true
   Object.assign(button.style, {
     cursor: 'wait',
@@ -561,6 +743,19 @@ function removeOverlay(): void {
 
 function removeBubble(): void {
   document.querySelector(BUBBLE_SELECTOR)?.remove()
+}
+
+function getCurrentSkin(): CaptionSkin {
+  return getCaptionSkin(currentSkinId)
+}
+
+function rerenderCurrentView(): void {
+  if (viewMode === 'panel') {
+    renderPanel()
+    return
+  }
+
+  renderBubble()
 }
 
 function applyBubblePosition(bubble: HTMLElement): void {
@@ -810,6 +1005,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function getChromeRuntime(): RuntimeMessageApi['runtime'] | undefined {
   return (globalThis as typeof globalThis & { chrome?: RuntimeMessageApi })
     .chrome?.runtime
+}
+
+function getChromeStorage(): StorageLocalApi | undefined {
+  return (globalThis as typeof globalThis & { chrome?: RuntimeMessageApi })
+    .chrome?.storage?.local
 }
 
 initializeContentScriptOverlay()

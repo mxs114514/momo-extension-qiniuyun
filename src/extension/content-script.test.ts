@@ -4,17 +4,32 @@ type MessageListener = (message: unknown) => void
 
 const listeners: MessageListener[] = []
 const sendMessage = vi.fn()
+const storageGet = vi.fn()
+const storageSet = vi.fn()
+const getUrl = vi.fn((path: string) => `chrome-extension://momo/${path}`)
 
 beforeEach(() => {
   listeners.length = 0
   sendMessage.mockReset()
+  storageGet.mockReset()
+  storageSet.mockReset()
+  getUrl.mockClear()
+  storageGet.mockResolvedValue({})
+  storageSet.mockResolvedValue(undefined)
   vi.stubGlobal('chrome', {
     runtime: {
+      getURL: getUrl,
       sendMessage,
       onMessage: {
         addListener: (listener: MessageListener) => {
           listeners.push(listener)
         },
+      },
+    },
+    storage: {
+      local: {
+        get: storageGet,
+        set: storageSet,
       },
     },
   })
@@ -34,6 +49,23 @@ describe('content script overlay', () => {
 
     expect(document.querySelector('[data-momo-caption-bubble]')).not.toBeNull()
     expect(document.querySelector('[data-momo-caption-overlay]')).toBeNull()
+  })
+
+  it('默认使用黑色皮肤渲染悬浮球和字幕面板', async () => {
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+    await vi.waitFor(() => {
+      expect(storageGet).toHaveBeenCalledWith('momoCaptionSkin')
+    })
+
+    const bubble = getElement('[data-momo-caption-bubble]')
+    expect(bubble.style.background).toBe('rgba(17, 24, 39, 0.92)')
+
+    clickBubble()
+
+    expect(panelStyle().background).toBe('rgba(0, 0, 0, 0.78)')
+    expect(panelStyle().color).toBe('rgb(255, 255, 255)')
   })
 
   it('点击悬浮球后在固定尺寸面板中最多展示最新两句中文字幕', async () => {
@@ -124,6 +156,78 @@ describe('content script overlay', () => {
     closePanel()
 
     expect(sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('点击皮肤按钮后展示五个皮肤选项', async () => {
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+    clickBubble()
+    clickButton('皮肤')
+
+    expect(panelText()).toContain('默认黑色')
+    expect(panelText()).toContain('白色')
+    expect(panelText()).toContain('流萤-思考')
+    expect(panelText()).toContain('流萤-惊喜')
+    expect(panelText()).toContain('流萤-喜悦')
+  })
+
+  it('选择白色皮肤后立即应用浅色面板并持久保存', async () => {
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+    clickBubble()
+    clickButton('皮肤')
+    clickButton('白色')
+
+    expect(panelStyle().background).toBe('rgba(255, 255, 255, 0.92)')
+    expect(panelStyle().color).toBe('rgb(15, 23, 42)')
+    expect(storageSet).toHaveBeenCalledWith({
+      momoCaptionSkin: 'classic-light',
+    })
+  })
+
+  it('选择流萤思考皮肤后使用扩展内背景图', async () => {
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+    clickBubble()
+    clickButton('皮肤')
+    clickButton('流萤-思考')
+
+    expect(getUrl).toHaveBeenCalledWith('skins/liuying-thinking.webp')
+    expect(panelStyle().backgroundImage).toContain(
+      'chrome-extension://momo/skins/liuying-thinking.webp',
+    )
+    expect(panelStyle().backgroundSize).toBe('cover')
+    expect(panelStyle().backgroundPosition).toBe('center center')
+  })
+
+  it('重新展开字幕面板后保留已选皮肤', async () => {
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+    clickBubble()
+    clickButton('皮肤')
+    clickButton('白色')
+    closePanel()
+    clickBubble()
+
+    expect(panelStyle().background).toBe('rgba(255, 255, 255, 0.92)')
+  })
+
+  it('存储中存在非法皮肤时回退默认黑色', async () => {
+    storageGet.mockResolvedValueOnce({ momoCaptionSkin: 'unknown-skin' })
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+
+    await vi.waitFor(() => {
+      expect(storageGet).toHaveBeenCalledWith('momoCaptionSkin')
+    })
+    clickBubble()
+
+    expect(panelStyle().background).toBe('rgba(0, 0, 0, 0.78)')
   })
 
   it('拖动悬浮球后松手会吸附到更近的页面边缘', async () => {

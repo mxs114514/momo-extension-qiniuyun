@@ -18,6 +18,7 @@ describe('extension manifest', () => {
         'tabCapture',
         'offscreen',
         'sidePanel',
+        'storage',
         'tabs',
       ]),
     )
@@ -30,6 +31,15 @@ describe('extension manifest', () => {
       {
         matches: ['<all_urls>'],
         js: ['assets/contentScript.js'],
+      },
+    ])
+  })
+
+  it('allows content script to render packaged skin background images', () => {
+    expect(manifest.web_accessible_resources).toEqual([
+      {
+        resources: ['skins/*.webp'],
+        matches: ['<all_urls>'],
       },
     ])
   })

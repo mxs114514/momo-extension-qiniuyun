@@ -1,9 +1,3 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# 这不是你熟悉的 Next.js
-
-此版本包含破坏性变更：API、约定和文件结构都可能与你训练数据中的 Next.js 不同。编写任何代码前，必须先阅读 `node_modules/next/dist/docs/` 中的相关指南。`doc/history`是已经弃置的历史文件，除非用户主动要求翻阅，不然默认忽视这些文件。务必遵守弃用提示。
-<!-- END:nextjs-agent-rules -->
-
 <!-- BEGIN:project-agent-rules -->
 # 项目协作规则
 
@@ -28,4 +22,5 @@
 - 采用TDD模式开发
 - 改代码后应执行测试,避免修改意外区域
 - 改完代码后不允许私自提交到远程仓库,并且应该总结本次改动让用户了解
+- `doc/history`是已经弃置的历史文件，除非用户主动要求翻阅，不然默认忽视这些文件。务必遵守弃用提示。
 <!-- END:project-agent-rules -->

@@ -19,8 +19,21 @@
       "js": ["assets/contentScript.js"]
     }
   ],
-  "permissions": ["activeTab", "tabCapture", "offscreen", "sidePanel", "tabs"],
+  "permissions": [
+    "activeTab",
+    "tabCapture",
+    "offscreen",
+    "sidePanel",
+    "storage",
+    "tabs"
+  ],
   "host_permissions": ["wss://asr.cloud.tencent.com/*", "<all_urls>"],
+  "web_accessible_resources": [
+    {
+      "resources": ["skins/*.webp"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",

@@ -45,7 +45,7 @@ test('浏览器插件构建产物可以加载主要页面和内容脚本', async
     const sidePanel = await context.newPage()
     await sidePanel.goto(`chrome-extension://${extensionId}/side-panel.html`)
     await expect(
-      sidePanel.getByRole('heading', { name: '莫莫实时字幕' }),
+      sidePanel.getByRole('heading', { name: '学习记录' }),
     ).toBeVisible()
 
     const page = await context.newPage()
