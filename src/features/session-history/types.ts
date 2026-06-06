@@ -6,6 +6,7 @@ export interface TranslationHistorySession {
   createdAt: number
   updatedAt: number
   summary: string
+  summaryWarning?: string
   sentences: TranslationSentence[]
 }
 
@@ -15,5 +16,6 @@ export interface TranslationHistorySummary {
   createdAt: number
   updatedAt: number
   summary: string
+  summaryWarning?: string
   sentenceCount: number
 }

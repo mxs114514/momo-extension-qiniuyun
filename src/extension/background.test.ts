@@ -180,6 +180,7 @@ describe('background service worker', () => {
 
   it('saves the final idle snapshot when stop requested history saving', async () => {
     hasDocument.mockResolvedValue(true)
+    historyStore.saveSession.mockResolvedValue({ id: 's1' })
     await import('./background')
     const sentences = [
       {
@@ -212,6 +213,7 @@ describe('background service worker', () => {
         now: expect.any(Number),
         sentences,
       })
+      expect(sendMessage).toHaveBeenCalledWith({ type: 'history/changed' })
     })
   })
 

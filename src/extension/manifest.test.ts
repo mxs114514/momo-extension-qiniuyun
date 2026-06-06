@@ -23,6 +23,7 @@ describe('extension manifest', () => {
       ]),
     )
     expect(manifest.host_permissions).toContain('wss://asr.cloud.tencent.com/*')
+    expect(manifest.host_permissions).toContain('https://api.deepseek.com/*')
     expect(manifest.host_permissions).toContain('<all_urls>')
   })
 

@@ -18,6 +18,7 @@ export type ExtensionCommand =
 export type ExtensionEvent =
   | { type: 'speech/snapshot'; snapshot: SpeechTranslationSnapshot }
   | { type: 'speech/error'; message: string }
+  | { type: 'history/changed' }
 
 export type OffscreenCommand =
   | { type: 'offscreen/start-tab-audio'; streamId: string }
@@ -96,6 +97,8 @@ export function isExtensionEvent(message: unknown): message is ExtensionEvent {
       return isRecord(message.snapshot)
     case 'speech/error':
       return typeof message.message === 'string'
+    case 'history/changed':
+      return true
     default:
       return false
   }

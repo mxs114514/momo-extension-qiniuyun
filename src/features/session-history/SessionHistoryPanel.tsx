@@ -71,6 +71,7 @@ export function SessionHistoryPanelView({
                 <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-400">
                   {session.summary || '暂无摘要'}
                 </p>
+                <SummaryWarning message={session.summaryWarning} />
               </button>
             ))}
           </div>
@@ -144,6 +145,7 @@ function SessionDetail({
         </div>
         <div className="border-y border-slate-800 py-5 text-sky-100">
           {session.summary || '暂无摘要'}
+          <SummaryWarning message={session.summaryWarning} />
         </div>
         <div className="space-y-6">
           {session.sentences.map((sentence) => (
@@ -163,6 +165,16 @@ function SessionDetail({
         </div>
       </section>
     </main>
+  )
+}
+
+function SummaryWarning({ message }: { message?: string }) {
+  if (!message) return null
+
+  return (
+    <p className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm leading-6 text-amber-200">
+      {message}
+    </p>
   )
 }
 

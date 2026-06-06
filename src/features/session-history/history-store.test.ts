@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TranslationSentence } from '../speech-translation/types'
 import { SessionHistoryStore } from './history-store'
 
@@ -31,6 +31,69 @@ describe('SessionHistoryStore', () => {
       sentenceCount: 1,
     })
     expect(sessions[1].title).toBe('翻译记录 2026-06-06 18:42')
+  })
+
+  it('保存会话时优先使用注入的摘要生成器', async () => {
+    const store = createStore({
+      summaryGenerator: {
+        generateSummary: async () => 'DeepSeek 生成的课程摘要',
+      },
+    })
+
+    const session = await store.saveSession({
+      now: new Date('2026-06-06T18:42:00+08:00').getTime(),
+      sentences: [makeSentence('1', 'hello', '你好，欢迎来到课程。')],
+    })
+
+    expect(session?.summary).toBe('DeepSeek 生成的课程摘要')
+    await expect(store.listSessions()).resolves.toMatchObject([
+      {
+        summary: 'DeepSeek 生成的课程摘要',
+      },
+    ])
+  })
+
+  it('摘要生成器异常或返回空内容时回退到第一句译文摘要', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const throwingStore = createStore({
+      summaryGenerator: {
+        generateSummary: async () => {
+          throw new Error('DeepSeek 请求失败')
+        },
+      },
+    })
+    const emptyStore = createStore({
+      summaryGenerator: {
+        generateSummary: async () => '   ',
+      },
+    })
+
+    await expect(
+      throwingStore.saveSession({
+        now: new Date('2026-06-06T18:42:00+08:00').getTime(),
+        sentences: [makeSentence('1', 'hello', '你好，欢迎来到课程。')],
+      }),
+    ).resolves.toMatchObject({
+      summary: '你好，欢迎来到课程。',
+      summaryWarning: 'AI 摘要失败，已使用本地摘要：DeepSeek 请求失败',
+    })
+    expect(warn).toHaveBeenCalledWith(
+      'DeepSeek 摘要生成失败，已回退到本地摘要',
+      expect.any(Error),
+    )
+    await expect(throwingStore.listSessions()).resolves.toMatchObject([
+      {
+        summaryWarning: 'AI 摘要失败，已使用本地摘要：DeepSeek 请求失败',
+      },
+    ])
+    await expect(
+      emptyStore.saveSession({
+        now: new Date('2026-06-06T18:43:00+08:00').getTime(),
+        sentences: [makeSentence('2', 'rendering', '渲染体验很重要。')],
+      }),
+    ).resolves.toMatchObject({
+      summary: '渲染体验很重要。',
+    })
   })
 
   it('不会保存空字幕或没有有效译文的会话', async () => {
@@ -83,9 +146,12 @@ describe('SessionHistoryStore', () => {
   })
 })
 
-function createStore(): SessionHistoryStore {
+function createStore(
+  options: ConstructorParameters<typeof SessionHistoryStore>[0] = {},
+): SessionHistoryStore {
   const store = new SessionHistoryStore({
     databaseName: `momo-history-test-${crypto.randomUUID()}`,
+    ...options,
   })
   stores.push(store)
   return store

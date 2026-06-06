@@ -4,9 +4,15 @@ import type {
   TranslationHistorySession,
   TranslationHistorySummary,
 } from './types'
+import {
+  createLocalSummary,
+  LocalSummaryGenerator,
+  type SummaryGenerator,
+} from './summary-generator'
 
 interface SessionHistoryStoreOptions {
   databaseName?: string
+  summaryGenerator?: SummaryGenerator
 }
 
 interface SaveSessionInput {
@@ -18,11 +24,16 @@ type SessionHistoryDatabase = Dexie & {
   sessions: EntityTable<TranslationHistorySession, 'id'>
 }
 
+interface SummaryResult {
+  text: string
+  warning?: string
+}
+
 const DEFAULT_DATABASE_NAME = 'momo-session-history'
-const SUMMARY_LIMIT = 80
 
 export class SessionHistoryStore {
   private readonly db: SessionHistoryDatabase
+  private readonly summaryGenerator: SummaryGenerator
 
   constructor(options: SessionHistoryStoreOptions = {}) {
     this.db = new Dexie(
@@ -31,6 +42,8 @@ export class SessionHistoryStore {
     this.db.version(1).stores({
       sessions: 'id, createdAt, updatedAt',
     })
+    this.summaryGenerator =
+      options.summaryGenerator ?? new LocalSummaryGenerator()
   }
 
   async saveSession(
@@ -41,12 +54,14 @@ export class SessionHistoryStore {
       .map((sentence) => ({ ...sentence }))
     if (sentences.length === 0) return null
 
+    const summary = await this.createSummary(sentences)
     const session: TranslationHistorySession = {
       id: crypto.randomUUID(),
       title: `翻译记录 ${formatDateTime(input.now)}`,
       createdAt: input.now,
       updatedAt: input.now,
-      summary: createSummary(sentences),
+      summary: summary.text,
+      summaryWarning: summary.warning,
       sentences,
     }
 
@@ -68,6 +83,7 @@ export class SessionHistoryStore {
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       summary: session.summary,
+      summaryWarning: session.summaryWarning,
       sentenceCount: session.sentences.length,
     }))
   }
@@ -100,14 +116,31 @@ export class SessionHistoryStore {
     this.db.close()
     await Dexie.delete(this.db.name)
   }
+
+  private async createSummary(
+    sentences: TranslationSentence[],
+  ): Promise<SummaryResult> {
+    try {
+      const summary = await this.summaryGenerator.generateSummary(sentences)
+      if (summary.trim()) return { text: summary.trim() }
+    } catch (error) {
+      console.warn('DeepSeek 摘要生成失败，已回退到本地摘要', error)
+      return {
+        text: createLocalSummary(sentences),
+        warning: `AI 摘要失败，已使用本地摘要：${getErrorMessage(error)}`,
+      }
+    }
+
+    return { text: createLocalSummary(sentences) }
+  }
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : '未知错误'
 }
 
 function hasText(sentence: TranslationSentence): boolean {
   return Boolean(sentence.targetText.trim())
-}
-
-function createSummary(sentences: TranslationSentence[]): string {
-  return sentences[0]?.targetText.trim().slice(0, SUMMARY_LIMIT) ?? ''
 }
 
 function formatDateTime(timestamp: number): string {

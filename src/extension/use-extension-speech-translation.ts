@@ -41,11 +41,13 @@ export function useExtensionSpeechTranslation() {
         return
       }
 
-      setSnapshot((current) => ({
-        ...current,
-        status: 'error',
-        error: message.message,
-      }))
+      if (message.type === 'speech/error') {
+        setSnapshot((current) => ({
+          ...current,
+          status: 'error',
+          error: message.message,
+        }))
+      }
     }
 
     getChrome().runtime.onMessage.addListener(listener)

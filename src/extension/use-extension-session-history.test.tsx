@@ -3,12 +3,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useExtensionSessionHistory } from './use-extension-session-history'
 
 const sendMessage = vi.fn()
+type MessageListener = (message: unknown) => void
+const listeners: MessageListener[] = []
 
 beforeEach(() => {
+  listeners.length = 0
   sendMessage.mockReset()
   vi.stubGlobal('chrome', {
     runtime: {
       sendMessage,
+      onMessage: {
+        addListener: (listener: MessageListener) => {
+          listeners.push(listener)
+        },
+        removeListener: (listener: MessageListener) => {
+          const index = listeners.indexOf(listener)
+          if (index >= 0) listeners.splice(index, 1)
+        },
+      },
     },
   })
 })
@@ -93,5 +105,43 @@ describe('useExtensionSessionHistory', () => {
       sessionId: 's1',
     })
     expect(result.current.selectedSession).toBeNull()
+  })
+
+  it('收到历史记录变化事件后自动刷新列表', async () => {
+    sendMessage
+      .mockResolvedValueOnce({ ok: true, data: [] })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: [
+          {
+            id: 's2',
+            title: '新保存记录',
+            createdAt: 2,
+            updatedAt: 2,
+            summary: 'DeepSeek 生成摘要',
+            sentenceCount: 2,
+          },
+        ],
+      })
+
+    const { result } = renderHook(() => useExtensionSessionHistory())
+
+    await waitFor(() => {
+      expect(result.current.sessions).toEqual([])
+    })
+
+    act(() => {
+      listeners.at(-1)?.({ type: 'history/changed' })
+    })
+
+    await waitFor(() => {
+      expect(result.current.sessions).toMatchObject([
+        {
+          title: '新保存记录',
+          summary: 'DeepSeek 生成摘要',
+        },
+      ])
+    })
+    expect(sendMessage).toHaveBeenCalledTimes(2)
   })
 })

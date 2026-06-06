@@ -11,6 +11,10 @@ import type {
 type ChromeApi = {
   runtime: {
     sendMessage: (message: unknown) => Promise<unknown>
+    onMessage: {
+      addListener: (listener: (message: unknown) => void) => void
+      removeListener: (listener: (message: unknown) => void) => void
+    }
   }
 }
 
@@ -52,6 +56,31 @@ export function useExtensionSessionHistory() {
       void loadSessions()
     })
   }, [loadSessions])
+
+  useEffect(() => {
+    const handleMessage = (message: unknown) => {
+      if (!isHistoryChangedEvent(message)) return
+
+      void loadSessions()
+      if (selectedSession) {
+        void sendCommand<TranslationHistorySession | null>({
+          type: 'history/get',
+          sessionId: selectedSession.id,
+        })
+          .then(setSelectedSession)
+          .catch((error) => {
+            setError(
+              error instanceof Error ? error.message : '加载记录详情失败',
+            )
+          })
+      }
+    }
+
+    getChrome().runtime.onMessage.addListener(handleMessage)
+    return () => {
+      getChrome().runtime.onMessage.removeListener(handleMessage)
+    }
+  }, [loadSessions, selectedSession, sendCommand])
 
   const selectSession = useCallback(
     async (sessionId: string) => {
@@ -162,4 +191,13 @@ function getChrome(): ChromeApi {
     .chrome
   if (!chromeApi) throw new Error('当前环境不支持扩展 API')
   return chromeApi
+}
+
+function isHistoryChangedEvent(message: unknown): boolean {
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    'type' in message &&
+    message.type === 'history/changed'
+  )
 }

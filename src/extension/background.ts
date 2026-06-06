@@ -163,10 +163,13 @@ async function saveStoppedSessionIfNeeded(
   shouldSaveStoppedSession = false
   if (snapshot.sentences.length === 0) return
 
-  await sessionHistoryStore.saveSession({
+  const savedSession = await sessionHistoryStore.saveSession({
     now: Date.now(),
     sentences: snapshot.sentences,
   })
+  if (savedSession) {
+    await getChrome().runtime.sendMessage({ type: 'history/changed' })
+  }
 }
 
 async function broadcastToContentScripts(event: ExtensionEvent): Promise<void> {

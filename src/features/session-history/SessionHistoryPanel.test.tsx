@@ -35,6 +35,43 @@ describe('SessionHistoryPanelView', () => {
     expect(selectSession).toHaveBeenCalledWith('s1')
   })
 
+  it('在列表和详情页显示 AI 摘要失败提示', () => {
+    const warning = 'AI 摘要失败，已使用本地摘要：DeepSeek 请求失败'
+    const { rerender } = render(
+      <SessionHistoryPanelView
+        model={{
+          sessions: [makeSummary({ summaryWarning: warning })],
+          selectedSession: null,
+          selectSession: vi.fn(),
+          backToList: vi.fn(),
+          renameSession: vi.fn(),
+          deleteSession: vi.fn(),
+          exportSession: vi.fn(),
+          error: null,
+        }}
+      />,
+    )
+
+    expect(screen.getByText(warning)).toBeInTheDocument()
+
+    rerender(
+      <SessionHistoryPanelView
+        model={{
+          sessions: [makeSummary({ summaryWarning: warning })],
+          selectedSession: makeSession({ summaryWarning: warning }),
+          selectSession: vi.fn(),
+          backToList: vi.fn(),
+          renameSession: vi.fn(),
+          deleteSession: vi.fn(),
+          exportSession: vi.fn(),
+          error: null,
+        }}
+      />,
+    )
+
+    expect(screen.getByText(warning)).toBeInTheDocument()
+  })
+
   it('详情页支持改名、删除和导出 Markdown', async () => {
     const renameSession = vi.fn()
     const deleteSession = vi.fn()
@@ -67,7 +104,9 @@ describe('SessionHistoryPanelView', () => {
   })
 })
 
-function makeSummary(): TranslationHistorySummary {
+function makeSummary(
+  overrides: Partial<TranslationHistorySummary> = {},
+): TranslationHistorySummary {
   return {
     id: 's1',
     title: 'React Conf Keynote',
@@ -75,12 +114,15 @@ function makeSummary(): TranslationHistorySummary {
     updatedAt: new Date('2026-06-06T19:15:00+08:00').getTime(),
     summary: '关于并发渲染与用户体验的讨论。',
     sentenceCount: 2,
+    ...overrides,
   }
 }
 
-function makeSession(): TranslationHistorySession {
+function makeSession(
+  overrides: Partial<TranslationHistorySession> = {},
+): TranslationHistorySession {
   return {
-    ...makeSummary(),
+    ...makeSummary(overrides),
     sentences: [
       {
         id: '1',
@@ -99,5 +141,6 @@ function makeSession(): TranslationHistorySession {
         isFinal: true,
       },
     ],
+    ...overrides,
   }
 }

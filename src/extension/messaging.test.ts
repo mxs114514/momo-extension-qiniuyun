@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { isExtensionCommand, isOffscreenCommand } from './messaging'
+import {
+  isExtensionCommand,
+  isExtensionEvent,
+  isOffscreenCommand,
+} from './messaging'
 
 describe('extension messaging', () => {
   it('accepts known speech commands and rejects unknown messages', () => {
@@ -56,5 +60,9 @@ describe('extension messaging', () => {
     expect(isOffscreenCommand({ type: 'offscreen/start-tab-audio' })).toBe(
       false,
     )
+  })
+
+  it('accepts history changed events', () => {
+    expect(isExtensionEvent({ type: 'history/changed' })).toBe(true)
   })
 })

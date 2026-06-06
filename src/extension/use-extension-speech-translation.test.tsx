@@ -67,6 +67,17 @@ describe('useExtensionSpeechTranslation', () => {
     expect(result.current.snapshot.sentences[0].targetText).toBe('你好')
   })
 
+  it('忽略历史记录变化事件', () => {
+    const { result } = renderHook(() => useExtensionSpeechTranslation())
+
+    act(() => {
+      listeners[0]?.({ type: 'history/changed' })
+    })
+
+    expect(result.current.snapshot.status).toBe('idle')
+    expect(result.current.snapshot.error).toBeNull()
+  })
+
   it('sends start with current active tab id and routes controls', async () => {
     const { result } = renderHook(() => useExtensionSpeechTranslation())
 
