@@ -52,7 +52,9 @@ export class MicrophoneAudioSource implements AudioSource {
       logSpeechDebug('麦克风：权限已获取')
       this.context = this.dependencies.createAudioContext()
       if (!this.context.audioWorklet) {
-        throw new Error('当前浏览器不支持 AudioWorklet')
+        throw new Error(
+          '当前浏览器不支持音频处理能力，请升级 Chrome 或 Edge 后重试。',
+        )
       }
 
       this.workletUrl = this.dependencies.createObjectURL(
@@ -80,12 +82,18 @@ export class MicrophoneAudioSource implements AudioSource {
       logSpeechError('麦克风启动失败', error)
       await this.cleanup()
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
-        throw new Error('麦克风权限被拒绝，请在浏览器设置中允许访问', {
-          cause: error,
-        })
+        throw new Error(
+          '麦克风权限被拒绝，请在浏览器设置中允许麦克风权限后重试。',
+          { cause: error },
+        )
       }
-      if (error instanceof Error) throw error
-      throw new Error('无法启动麦克风', { cause: error })
+      if (error instanceof Error && isGuidedChineseError(error.message)) {
+        throw error
+      }
+      throw new Error(
+        '无法启动麦克风，请刷新页面并检查浏览器麦克风权限后重试。',
+        { cause: error },
+      )
     }
   }
 
@@ -108,7 +116,9 @@ export class MicrophoneAudioSource implements AudioSource {
   }
 
   private async cleanup(): Promise<void> {
-    const hadResources = Boolean(this.stream || this.context || this.workletNode)
+    const hadResources = Boolean(
+      this.stream || this.context || this.workletNode,
+    )
     if (this.workletNode) {
       this.workletNode.port.onmessage = null
       this.workletNode.disconnect()
@@ -135,4 +145,8 @@ export class MicrophoneAudioSource implements AudioSource {
       logSpeechDebug('麦克风：资源已释放')
     }
   }
+}
+
+function isGuidedChineseError(message: string): boolean {
+  return /[\u4e00-\u9fff]/.test(message) && message.includes('请')
 }

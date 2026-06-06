@@ -118,7 +118,18 @@ describe('TabAudioSource', () => {
       new DOMException('denied', 'NotAllowedError'),
     )
     await expect(fixture.audioSource.start(vi.fn())).rejects.toThrow(
-      '标签页音频权限被拒绝，请重新授权标签页音频捕获',
+      '标签页音频权限被拒绝，请重新点击开始并在授权弹窗中允许捕获当前标签页声音。',
+    )
+  })
+
+  it('将未知标签页音频启动错误转换为带操作指引的中文错误', async () => {
+    const fixture = setup()
+    fixture.getUserMedia.mockRejectedValueOnce(
+      new Error('Failed to execute getUserMedia'),
+    )
+
+    await expect(fixture.audioSource.start(vi.fn())).rejects.toThrow(
+      '无法启动标签页音频，请刷新页面并重新加载扩展后重试。',
     )
   })
 
@@ -129,7 +140,7 @@ describe('TabAudioSource', () => {
     }
     delete context.audioWorklet
     await expect(fixture.audioSource.start(vi.fn())).rejects.toThrow(
-      '当前浏览器不支持 AudioWorklet',
+      '当前浏览器不支持音频处理能力，请升级 Chrome 或 Edge 后重试。',
     )
     expect(fixture.track.stop).toHaveBeenCalledOnce()
   })
@@ -141,7 +152,7 @@ describe('TabAudioSource', () => {
     )
 
     await expect(fixture.audioSource.start(vi.fn())).rejects.toThrow(
-      '无法加载标签页音频处理模块，请刷新插件后重试',
+      '无法加载标签页音频处理模块，请刷新页面并重新加载扩展后重试。',
     )
     expect(fixture.track.stop).toHaveBeenCalledOnce()
   })

@@ -130,6 +130,20 @@ describe('SpeechTranslationController', () => {
     })
   })
 
+  it('启动阶段英文底层异常会转换为中文操作指引', async () => {
+    const fixture = setup()
+    vi.mocked(fixture.audioSource.start).mockRejectedValueOnce(
+      new Error('Failed to execute getUserMedia'),
+    )
+
+    await fixture.controller.start()
+
+    expect(fixture.controller.getSnapshot()).toMatchObject({
+      status: 'error',
+      error: '启动实时翻译失败，请刷新页面并检查音频权限、网络连接后重试。',
+    })
+  })
+
   it('dispose 不清空由订阅方管理的监听器', async () => {
     const fixture = setup()
     const listener = vi.fn()
@@ -148,9 +162,6 @@ describe('SpeechTranslationController', () => {
 
     await fixture.controller.start()
 
-    expect(info).toHaveBeenCalledWith(
-      '[实时翻译]',
-      '开始：正在请求麦克风权限',
-    )
+    expect(info).toHaveBeenCalledWith('[实时翻译]', '开始：正在请求麦克风权限')
   })
 })

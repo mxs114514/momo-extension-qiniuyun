@@ -724,6 +724,10 @@ function normalizeCommandError(message: string): string {
     return '浏览器内置页面不能捕获声音，请切换到普通网页后再开始翻译。'
   }
 
+  if (!/[\u4e00-\u9fff]/.test(message)) {
+    return '操作失败，请刷新页面并重新点击浏览器工具栏里的莫莫实时字幕图标后重试。'
+  }
+
   return message
 }
 

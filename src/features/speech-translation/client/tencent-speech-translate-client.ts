@@ -132,8 +132,8 @@ export class TencentSpeechTranslateClient implements SpeechTranslateClient {
       })
       const message =
         response.code === 6002
-          ? '腾讯云鉴权失败，请检查凭证'
-          : `腾讯云服务异常（错误码 ${response.code}）`
+          ? '腾讯云鉴权失败，请检查 .env.local 中的腾讯云凭证后重新加载扩展。'
+          : `腾讯云服务异常（错误码 ${response.code}），请稍后重试；如果持续出现，请检查腾讯云配置。`
       this.fail(message)
       return
     }

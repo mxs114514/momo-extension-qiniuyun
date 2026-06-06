@@ -86,7 +86,18 @@ describe('MicrophoneAudioSource', () => {
       new DOMException('denied', 'NotAllowedError'),
     )
     await expect(fixture.audioSource.start(vi.fn())).rejects.toThrow(
-      '麦克风权限被拒绝，请在浏览器设置中允许访问',
+      '麦克风权限被拒绝，请在浏览器设置中允许麦克风权限后重试。',
+    )
+  })
+
+  it('将未知麦克风启动错误转换为带操作指引的中文错误', async () => {
+    const fixture = setup()
+    fixture.getUserMedia.mockRejectedValueOnce(
+      new Error('Failed to execute getUserMedia'),
+    )
+
+    await expect(fixture.audioSource.start(vi.fn())).rejects.toThrow(
+      '无法启动麦克风，请刷新页面并检查浏览器麦克风权限后重试。',
     )
   })
 
@@ -97,7 +108,7 @@ describe('MicrophoneAudioSource', () => {
     }
     delete context.audioWorklet
     await expect(fixture.audioSource.start(vi.fn())).rejects.toThrow(
-      '当前浏览器不支持 AudioWorklet',
+      '当前浏览器不支持音频处理能力，请升级 Chrome 或 Edge 后重试。',
     )
     expect(fixture.track.stop).toHaveBeenCalledOnce()
   })

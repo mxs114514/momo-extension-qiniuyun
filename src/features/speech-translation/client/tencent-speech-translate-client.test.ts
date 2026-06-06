@@ -109,7 +109,17 @@ describe('TencentSpeechTranslateClient', () => {
     await client.connect()
     socket.open()
     socket.message({ code: 6002, message: 'auth failed' })
-    expect(events.onError).toHaveBeenCalledWith('腾讯云鉴权失败，请检查凭证')
+    expect(events.onError).toHaveBeenCalledWith(
+      '腾讯云鉴权失败，请检查 .env.local 中的腾讯云凭证后重新加载扩展。',
+    )
+
+    const serviceError = setup()
+    await serviceError.client.connect()
+    serviceError.socket.open()
+    serviceError.socket.message({ code: 4001, message: 'bad request' })
+    expect(serviceError.events.onError).toHaveBeenCalledWith(
+      '腾讯云服务异常（错误码 4001），请稍后重试；如果持续出现，请检查腾讯云配置。',
+    )
 
     const second = setup()
     await second.client.connect()

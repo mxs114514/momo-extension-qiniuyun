@@ -69,7 +69,9 @@ export class TabAudioSource implements AudioSource {
       logSpeechDebug('标签页音频：权限已获取')
       this.context = this.dependencies.createAudioContext()
       if (!this.context.audioWorklet) {
-        throw new Error('当前浏览器不支持 AudioWorklet')
+        throw new Error(
+          '当前浏览器不支持音频处理能力，请升级 Chrome 或 Edge 后重试。',
+        )
       }
 
       this.workletUrl = this.dependencies.getWorkletModuleUrl()
@@ -103,21 +105,27 @@ export class TabAudioSource implements AudioSource {
       logSpeechError('标签页音频启动失败', error)
       await this.cleanup()
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
-        throw new Error('标签页音频权限被拒绝，请重新授权标签页音频捕获', {
-          cause: error,
-        })
+        throw new Error(
+          '标签页音频权限被拒绝，请重新点击开始并在授权弹窗中允许捕获当前标签页声音。',
+          { cause: error },
+        )
       }
       if (
         error instanceof DOMException &&
         error.name === 'AbortError' &&
         error.message.includes("Unable to load a worklet's module")
       ) {
-        throw new Error('无法加载标签页音频处理模块，请刷新插件后重试', {
-          cause: error,
-        })
+        throw new Error(
+          '无法加载标签页音频处理模块，请刷新页面并重新加载扩展后重试。',
+          { cause: error },
+        )
       }
-      if (error instanceof Error) throw error
-      throw new Error('无法启动标签页音频', { cause: error })
+      if (error instanceof Error && isGuidedChineseError(error.message)) {
+        throw error
+      }
+      throw new Error('无法启动标签页音频，请刷新页面并重新加载扩展后重试。', {
+        cause: error,
+      })
     }
   }
 
@@ -170,4 +178,8 @@ export class TabAudioSource implements AudioSource {
       logSpeechDebug('标签页音频：资源已释放')
     }
   }
+}
+
+function isGuidedChineseError(message: string): boolean {
+  return /[\u4e00-\u9fff]/.test(message) && message.includes('请')
 }

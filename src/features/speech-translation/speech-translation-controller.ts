@@ -83,9 +83,7 @@ export class SpeechTranslationController {
       await this.client.connect()
     } catch (error) {
       logSpeechError('启动失败', error)
-      await this.handleError(
-        error instanceof Error ? error.message : '启动实时翻译失败',
-      )
+      await this.handleError(toUserFacingStartupError(error))
     }
   }
 
@@ -177,4 +175,16 @@ export class SpeechTranslationController {
       this.stopTimer = null
     }
   }
+}
+
+function toUserFacingStartupError(error: unknown): string {
+  if (error instanceof Error && isGuidedChineseError(error.message)) {
+    return error.message
+  }
+
+  return '启动实时翻译失败，请刷新页面并检查音频权限、网络连接后重试。'
+}
+
+function isGuidedChineseError(message: string): boolean {
+  return /[\u4e00-\u9fff]/.test(message) && message.includes('请')
 }

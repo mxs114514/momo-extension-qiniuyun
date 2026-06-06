@@ -406,6 +406,24 @@ describe('content script overlay', () => {
     })
   })
 
+  it('开始翻译收到未知英文后台错误时展示中文操作指引', async () => {
+    sendMessage.mockResolvedValueOnce({
+      ok: false,
+      error: 'Failed to start tab capture',
+    })
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+    clickBubble()
+    clickButton('开始翻译')
+
+    await vi.waitFor(() => {
+      expect(panelText()).toContain(
+        '操作失败，请刷新页面并重新点击浏览器工具栏里的莫莫实时字幕图标后重试。',
+      )
+    })
+  })
+
   it('翻译中和暂停状态在字幕面板内提供暂停、继续和停止控制', async () => {
     const { initializeContentScriptOverlay } = await import('./content-script')
 
