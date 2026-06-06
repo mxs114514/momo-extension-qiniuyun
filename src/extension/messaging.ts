@@ -7,8 +7,12 @@ export type ExtensionCommand =
   | { type: 'speech/start'; tabId?: number }
   | { type: 'speech/pause' }
   | { type: 'speech/resume' }
-  | { type: 'speech/stop' }
+  | { type: 'speech/stop'; saveHistory?: boolean }
   | { type: 'speech/get-snapshot' }
+  | { type: 'history/list' }
+  | { type: 'history/get'; sessionId: string }
+  | { type: 'history/rename'; sessionId: string; title: string }
+  | { type: 'history/delete'; sessionId: string }
 
 export type ExtensionEvent =
   | { type: 'speech/snapshot'; snapshot: SpeechTranslationSnapshot }
@@ -38,11 +42,28 @@ export function isExtensionCommand(
           Number.isInteger(message.tabId) &&
           message.tabId > 0)
       )
+    case 'speech/stop':
+      return (
+        message.saveHistory === undefined ||
+        typeof message.saveHistory === 'boolean'
+      )
     case 'speech/pause':
     case 'speech/resume':
-    case 'speech/stop':
     case 'speech/get-snapshot':
+    case 'history/list':
       return true
+    case 'history/get':
+    case 'history/delete':
+      return (
+        typeof message.sessionId === 'string' && message.sessionId.length > 0
+      )
+    case 'history/rename':
+      return (
+        typeof message.sessionId === 'string' &&
+        message.sessionId.length > 0 &&
+        typeof message.title === 'string' &&
+        message.title.trim().length > 0
+      )
     default:
       return false
   }

@@ -45,6 +45,8 @@ let captionText = ''
 let status = 'idle'
 let errorText = ''
 let viewMode: 'bubble' | 'panel' = 'bubble'
+let stopConfirming = false
+let hasSavableCaption = false
 let bubblePosition: BubblePosition | null = null
 let panelPosition: Position | null = null
 
@@ -94,6 +96,8 @@ function handleMessage(message: unknown): void {
     captionText = ''
     errorText = ''
     status = 'idle'
+    stopConfirming = false
+    hasSavableCaption = false
     viewMode = 'bubble'
     renderBubble()
     return
@@ -103,10 +107,12 @@ function handleMessage(message: unknown): void {
   captionText = text
   status = message.snapshot?.status ?? status
   errorText = message.snapshot?.error ?? ''
+  hasSavableCaption = hasValidCaption(message)
 
   if (hasSnapshotError(message)) {
     status = 'error'
     errorText = message.snapshot?.error ?? '翻译异常'
+    stopConfirming = false
   }
 
   if (viewMode === 'panel') {
@@ -143,6 +149,16 @@ function getLatestCaptionText(
       .filter(Boolean)
       .slice(-2)
       .join('\n') ?? ''
+  )
+}
+
+function hasValidCaption(
+  message: Extract<CaptionMessage, { type: 'speech/snapshot' }>,
+): boolean {
+  return (
+    message.snapshot?.sentences?.some((sentence) =>
+      Boolean(sentence.targetText?.trim()),
+    ) ?? false
   )
 }
 
@@ -349,6 +365,24 @@ function renderPanel(): void {
 }
 
 function createControlButtons(): HTMLButtonElement[] {
+  if (stopConfirming) {
+    return [
+      createCommandButton('保存并停止', {
+        type: 'speech/stop',
+        saveHistory: true,
+      }),
+      createCommandButton(
+        '不保存',
+        {
+          type: 'speech/stop',
+          saveHistory: false,
+        },
+        true,
+      ),
+      createCancelStopButton(),
+    ]
+  }
+
   if (status === 'idle' || status === 'error') {
     return [
       createCommandButton(status === 'error' ? '重新开始' : '开始翻译', {
@@ -360,23 +394,66 @@ function createControlButtons(): HTMLButtonElement[] {
   if (status === 'translating') {
     return [
       createCommandButton('暂停', { type: 'speech/pause' }),
-      createCommandButton('停止', { type: 'speech/stop' }, true),
+      createStopButton(),
     ]
   }
 
   if (status === 'paused') {
     return [
       createCommandButton('继续', { type: 'speech/resume' }),
-      createCommandButton('停止', { type: 'speech/stop' }, true),
+      createStopButton(),
     ]
   }
 
   return [createDisabledButton('请稍候')]
 }
 
+function createStopButton(): HTMLButtonElement {
+  const button = createStyledControlButton('停止', true)
+  button.addEventListener('click', (event) => {
+    event.stopPropagation()
+    if (!hasSavableCaption) {
+      void sendCommand({
+        type: 'speech/stop',
+        saveHistory: false,
+      })
+      return
+    }
+
+    stopConfirming = true
+    renderPanel()
+  })
+
+  return button
+}
+
+function createCancelStopButton(): HTMLButtonElement {
+  const button = createStyledControlButton('取消')
+  button.addEventListener('click', (event) => {
+    event.stopPropagation()
+    stopConfirming = false
+    renderPanel()
+  })
+
+  return button
+}
+
 function createCommandButton(
   label: string,
   message: unknown,
+  danger = false,
+): HTMLButtonElement {
+  const button = createStyledControlButton(label, danger)
+  button.addEventListener('click', (event) => {
+    event.stopPropagation()
+    void sendCommand(message)
+  })
+
+  return button
+}
+
+function createStyledControlButton(
+  label: string,
   danger = false,
 ): HTMLButtonElement {
   const button = document.createElement('button')
@@ -393,15 +470,11 @@ function createCommandButton(
     fontWeight: '700',
     cursor: 'pointer',
   })
-  button.addEventListener('click', (event) => {
-    event.stopPropagation()
-    void sendCommand(message)
-  })
-
   return button
 }
 
 async function sendCommand(message: unknown): Promise<void> {
+  stopConfirming = false
   applyOptimisticStatus(message)
 
   try {

@@ -4,12 +4,12 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import '../index.css'
-import { SpeechTranslationPanelView } from '../features/speech-translation/SpeechTranslationPanel'
-import { useExtensionSpeechTranslation } from './use-extension-speech-translation'
+import { SessionHistoryPanelView } from '../features/session-history/SessionHistoryPanel'
+import { useExtensionSessionHistory } from './use-extension-session-history'
 
 export function SidePanel() {
-  const model = useExtensionSpeechTranslation()
-  return <SpeechTranslationPanelView model={model} />
+  const model = useExtensionSessionHistory()
+  return <SessionHistoryPanelView model={model} />
 }
 
 createRoot(document.getElementById('root')!).render(

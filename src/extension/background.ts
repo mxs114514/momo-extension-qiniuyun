@@ -6,6 +6,7 @@ import {
   isExtensionEvent,
 } from './messaging'
 import type { SpeechTranslationSnapshot } from '../features/speech-translation/types'
+import { sessionHistoryStore } from '../features/session-history/default-history-store'
 
 type ChromeRuntimeSender = {
   tab?: {
@@ -13,7 +14,10 @@ type ChromeRuntimeSender = {
   }
 }
 
-type SendResponse = (response: { ok: boolean; error?: string }) => void
+type ExtensionResponse =
+  | { ok: true; data?: unknown }
+  | { ok: false; error: string }
+type SendResponse = (response: ExtensionResponse) => void
 
 type ChromeApi = {
   action?: {
@@ -65,6 +69,7 @@ type ChromeApi = {
 const chromeApi = (globalThis as typeof globalThis & { chrome?: ChromeApi })
   .chrome
 let lastSnapshot: SpeechTranslationSnapshot | null = null
+let shouldSaveStoppedSession = false
 
 chromeApi?.action?.onClicked.addListener(() => {
   void openPanelOnActiveTab()
@@ -72,7 +77,9 @@ chromeApi?.action?.onClicked.addListener(() => {
 
 chromeApi?.runtime.onMessage.addListener((message, sender, sendResponse) => {
   void handleRuntimeMessage(message, sender)
-    .then(() => sendResponse({ ok: true }))
+    .then((data) =>
+      sendResponse(data === undefined ? { ok: true } : { ok: true, data }),
+    )
     .catch((error) =>
       sendResponse({
         ok: false,
@@ -86,7 +93,7 @@ chromeApi?.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleRuntimeMessage(
   message: unknown,
   sender: ChromeRuntimeSender,
-): Promise<void> {
+): Promise<unknown> {
   if (isExtensionEvent(message)) {
     await handleExtensionEvent(message)
     return
@@ -107,6 +114,7 @@ async function handleRuntimeMessage(
       await sendOffscreenCommand({ type: 'offscreen/resume' })
       break
     case 'speech/stop':
+      shouldSaveStoppedSession = message.saveHistory === true
       await sendOffscreenCommand({ type: 'offscreen/stop' })
       break
     case 'speech/get-snapshot':
@@ -117,15 +125,42 @@ async function handleRuntimeMessage(
         })
       }
       break
+    case 'history/list':
+      return sessionHistoryStore.listSessions()
+    case 'history/get':
+      return sessionHistoryStore.getSession(message.sessionId)
+    case 'history/rename':
+      await sessionHistoryStore.renameSession(message.sessionId, message.title)
+      break
+    case 'history/delete':
+      await sessionHistoryStore.deleteSession(message.sessionId)
+      break
   }
 }
 
 async function handleExtensionEvent(event: ExtensionEvent): Promise<void> {
   if (event.type === 'speech/snapshot') {
     lastSnapshot = event.snapshot
+    if (event.snapshot.status === 'idle') {
+      await saveStoppedSessionIfNeeded(event.snapshot)
+    }
   }
   await getChrome().runtime.sendMessage(event)
   await broadcastToContentScripts(event)
+}
+
+async function saveStoppedSessionIfNeeded(
+  snapshot: SpeechTranslationSnapshot,
+): Promise<void> {
+  if (!shouldSaveStoppedSession) return
+
+  shouldSaveStoppedSession = false
+  if (snapshot.sentences.length === 0) return
+
+  await sessionHistoryStore.saveSession({
+    now: Date.now(),
+    sentences: snapshot.sentences,
+  })
 }
 
 async function broadcastToContentScripts(event: ExtensionEvent): Promise<void> {

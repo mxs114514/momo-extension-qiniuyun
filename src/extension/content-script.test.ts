@@ -289,9 +289,7 @@ describe('content script overlay', () => {
 
     expect(panelText()).toContain('翻译中')
     clickButton('暂停')
-    clickButton('停止')
     expect(sendMessage).toHaveBeenCalledWith({ type: 'speech/pause' })
-    expect(sendMessage).toHaveBeenCalledWith({ type: 'speech/stop' })
 
     listeners.at(-1)?.({
       type: 'speech/snapshot',
@@ -314,6 +312,106 @@ describe('content script overlay', () => {
     expect(panelText()).toContain('已暂停')
     clickButton('继续')
     expect(sendMessage).toHaveBeenCalledWith({ type: 'speech/resume' })
+  })
+
+  it('点击停止后先在字幕面板内确认是否保存本次记录', async () => {
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+    listeners.at(-1)?.({
+      type: 'speech/snapshot',
+      snapshot: {
+        status: 'translating',
+        error: null,
+        sentences: [
+          {
+            id: '1',
+            sourceText: 'hello',
+            targetText: '你好',
+            startTime: 0,
+            endTime: 1,
+            isFinal: true,
+          },
+        ],
+      },
+    })
+    clickBubble()
+
+    clickButton('停止')
+
+    expect(panelText()).toContain('保存并停止')
+    expect(panelText()).toContain('不保存')
+    expect(panelText()).toContain('取消')
+    expect(sendMessage).not.toHaveBeenCalledWith({
+      type: 'speech/stop',
+      saveHistory: true,
+    })
+
+    clickButton('保存并停止')
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: 'speech/stop',
+      saveHistory: true,
+    })
+  })
+
+  it('停止确认选择不保存会丢弃本次记录，取消不会发送停止命令', async () => {
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+    listeners.at(-1)?.({
+      type: 'speech/snapshot',
+      snapshot: {
+        status: 'translating',
+        error: null,
+        sentences: [
+          {
+            id: '1',
+            sourceText: 'hello',
+            targetText: '你好',
+            startTime: 0,
+            endTime: 1,
+            isFinal: true,
+          },
+        ],
+      },
+    })
+    clickBubble()
+
+    clickButton('停止')
+    clickButton('取消')
+    expect(sendMessage).not.toHaveBeenCalledWith({
+      type: 'speech/stop',
+      saveHistory: false,
+    })
+
+    clickButton('停止')
+    clickButton('不保存')
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: 'speech/stop',
+      saveHistory: false,
+    })
+  })
+
+  it('没有有效字幕时点击停止会直接不保存并停止', async () => {
+    const { initializeContentScriptOverlay } = await import('./content-script')
+
+    initializeContentScriptOverlay()
+    listeners.at(-1)?.({
+      type: 'speech/snapshot',
+      snapshot: {
+        status: 'translating',
+        error: null,
+        sentences: [],
+      },
+    })
+    clickBubble()
+
+    clickButton('停止')
+
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: 'speech/stop',
+      saveHistory: false,
+    })
   })
 
   it('暂停状态下保留悬浮字幕切换能力和最后一句字幕', async () => {

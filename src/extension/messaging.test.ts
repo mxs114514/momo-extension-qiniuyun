@@ -6,7 +6,43 @@ describe('extension messaging', () => {
     expect(isExtensionCommand({ type: 'speech/start', tabId: 1 })).toBe(true)
     expect(isExtensionCommand({ type: 'speech/start' })).toBe(true)
     expect(isExtensionCommand({ type: 'speech/stop' })).toBe(true)
+    expect(isExtensionCommand({ type: 'speech/stop', saveHistory: true })).toBe(
+      true,
+    )
+    expect(
+      isExtensionCommand({ type: 'speech/stop', saveHistory: false }),
+    ).toBe(true)
+    expect(
+      isExtensionCommand({ type: 'speech/stop', saveHistory: 'yes' }),
+    ).toBe(false)
     expect(isExtensionCommand({ type: 'unknown' })).toBe(false)
+  })
+
+  it('accepts history commands with valid payloads', () => {
+    expect(isExtensionCommand({ type: 'history/list' })).toBe(true)
+    expect(isExtensionCommand({ type: 'history/get', sessionId: 's1' })).toBe(
+      true,
+    )
+    expect(
+      isExtensionCommand({
+        type: 'history/rename',
+        sessionId: 's1',
+        title: 'React 课程记录',
+      }),
+    ).toBe(true)
+    expect(
+      isExtensionCommand({ type: 'history/delete', sessionId: 's1' }),
+    ).toBe(true)
+    expect(isExtensionCommand({ type: 'history/get', sessionId: '' })).toBe(
+      false,
+    )
+    expect(
+      isExtensionCommand({
+        type: 'history/rename',
+        sessionId: 's1',
+        title: '',
+      }),
+    ).toBe(false)
   })
 
   it('accepts known offscreen commands', () => {

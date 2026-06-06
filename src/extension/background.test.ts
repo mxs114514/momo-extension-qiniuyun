@@ -1,5 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const historyStore = vi.hoisted(() => ({
+  saveSession: vi.fn(),
+  listSessions: vi.fn(),
+  getSession: vi.fn(),
+  renameSession: vi.fn(),
+  deleteSession: vi.fn(),
+}))
+
+vi.mock('../features/session-history/default-history-store', () => ({
+  sessionHistoryStore: historyStore,
+}))
+
 type RuntimeListener = (
   message: unknown,
   sender: { tab?: { id?: number } },
@@ -26,6 +38,12 @@ beforeEach(() => {
   getMediaStreamId.mockReset()
   createDocument.mockReset()
   hasDocument.mockReset()
+  historyStore.saveSession.mockReset()
+  historyStore.listSessions.mockReset()
+  historyStore.getSession.mockReset()
+  historyStore.renameSession.mockReset()
+  historyStore.deleteSession.mockReset()
+  query.mockResolvedValue([])
   vi.stubGlobal('chrome', {
     runtime: {
       onMessage: {
@@ -140,6 +158,99 @@ describe('background service worker', () => {
     })
   })
 
+  it('saves the final idle snapshot when stop requested history saving', async () => {
+    hasDocument.mockResolvedValue(true)
+    await import('./background')
+    const sentences = [
+      {
+        id: '1',
+        sourceText: 'hello',
+        targetText: '你好',
+        startTime: 0,
+        endTime: 1,
+        isFinal: true,
+      },
+    ]
+
+    listener?.({ type: 'speech/stop', saveHistory: true }, {}, sendResponse)
+    listener?.(
+      {
+        type: 'speech/snapshot',
+        snapshot: {
+          status: 'idle',
+          error: null,
+          sentences,
+        },
+      },
+      {},
+      sendResponse,
+    )
+
+    await vi.waitFor(() => {
+      expect(sendMessage).toHaveBeenCalledWith({ type: 'offscreen/stop' })
+      expect(historyStore.saveSession).toHaveBeenCalledWith({
+        now: expect.any(Number),
+        sentences,
+      })
+    })
+  })
+
+  it('does not save the final idle snapshot when stop discards history', async () => {
+    hasDocument.mockResolvedValue(true)
+    await import('./background')
+
+    listener?.({ type: 'speech/stop', saveHistory: false }, {}, sendResponse)
+    listener?.(
+      {
+        type: 'speech/snapshot',
+        snapshot: {
+          status: 'idle',
+          error: null,
+          sentences: [
+            {
+              id: '1',
+              sourceText: 'hello',
+              targetText: '你好',
+              startTime: 0,
+              endTime: 1,
+              isFinal: true,
+            },
+          ],
+        },
+      },
+      {},
+      sendResponse,
+    )
+
+    await vi.waitFor(() => {
+      expect(historyStore.saveSession).not.toHaveBeenCalled()
+    })
+  })
+
+  it('returns history list data from the session history store', async () => {
+    const sessions = [
+      {
+        id: 's1',
+        title: 'React 课程记录',
+        createdAt: 1,
+        updatedAt: 1,
+        summary: '你好',
+        sentenceCount: 1,
+      },
+    ]
+    historyStore.listSessions.mockResolvedValue(sessions)
+    await import('./background')
+
+    listener?.({ type: 'history/list' }, {}, sendResponse)
+
+    await vi.waitFor(() => {
+      expect(sendResponse).toHaveBeenCalledWith({
+        ok: true,
+        data: sessions,
+      })
+    })
+  })
+
   it('returns a Chinese error for unsupported commands', async () => {
     await import('./background')
 
@@ -173,6 +284,40 @@ describe('background service worker', () => {
         type: 'speech/snapshot',
         snapshot,
       })
+    })
+  })
+
+  it('routes history detail, rename and delete commands to the session history store', async () => {
+    const session = {
+      id: 's1',
+      title: 'React 课程记录',
+      createdAt: 1,
+      updatedAt: 1,
+      summary: '你好',
+      sentences: [],
+    }
+    historyStore.getSession.mockResolvedValue(session)
+    await import('./background')
+
+    listener?.({ type: 'history/get', sessionId: 's1' }, {}, sendResponse)
+    listener?.(
+      {
+        type: 'history/rename',
+        sessionId: 's1',
+        title: '新标题',
+      },
+      {},
+      sendResponse,
+    )
+    listener?.({ type: 'history/delete', sessionId: 's1' }, {}, sendResponse)
+
+    await vi.waitFor(() => {
+      expect(sendResponse).toHaveBeenCalledWith({
+        ok: true,
+        data: session,
+      })
+      expect(historyStore.renameSession).toHaveBeenCalledWith('s1', '新标题')
+      expect(historyStore.deleteSession).toHaveBeenCalledWith('s1')
     })
   })
 })
