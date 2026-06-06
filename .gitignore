@@ -1,23 +1,25 @@
-# Dependencies
+# 依赖目录
 node_modules/
 tencentcloud-speech-sdk-js/
 
-# Build outputs
+# 构建产物
 dist/
 dist-ssr/
 build/
 out/
 *.tsbuildinfo
 
-# Test and coverage outputs
+# 测试、覆盖率和浏览器自动化产物
 coverage/
 playwright-report/
 test-results/
 blob-report/
 .nyc_output/
+.playwright-cli/
 
-# Tool caches
+# 工具缓存和临时工作区
 .worktrees/
+.superpowers/
 .pnpm-store/
 .cache/
 .eslintcache
@@ -26,7 +28,7 @@ blob-report/
 .turbo/
 .parcel-cache/
 
-# Logs
+# 日志文件
 logs/
 *.log
 npm-debug.log*
@@ -35,17 +37,17 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment variables and local overrides
+# 环境变量和本地覆盖配置
 .env
 .env.*
 !.env.example
 !.env.*.example
 *.local
 
-# Husky generated files
+# Husky 生成文件
 .husky/_/
 
-# Editor settings
+# 编辑器配置
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
@@ -58,7 +60,7 @@ lerna-debug.log*
 *.sw?
 *~
 
-# Operating system files
+# 操作系统生成文件
 .DS_Store
 .AppleDouble
 .LSOverride
@@ -66,7 +68,7 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
-# Temporary files
+# 临时文件
 tmp/
 temp/
 *.tmp
